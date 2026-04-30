@@ -2285,9 +2285,12 @@ def cargue_glosas_plantilla():
     )
 
 
+import os
+
 if __name__ == "__main__":
-    host = os.environ.get("WEB_HOST", "0.0.0.0")
-    port = int(os.environ.get("WEB_PORT", "5000"))
-    debug = os.environ.get("WEB_DEBUG", "").strip() in ("1", "true", "True", "yes", "YES")
-    app.run(host=host, port=port, debug=debug, use_reloader=debug)
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", 5000)) 
+    debug = os.environ.get("WEB_DEBUG", "").strip().lower() in ("1", "true", "yes")
+
+    app.run(host=host, port=port, debug=debug)
 
