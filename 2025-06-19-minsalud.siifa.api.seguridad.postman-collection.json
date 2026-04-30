@@ -1,0 +1,1134 @@
+{
+	"info": {
+		"_postman_id": "79c9e788-da30-4862-8661-65be4d65e75e",
+		"name": "MinSalud.SIIFA.API.Seguridad",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "6259064"
+	},
+	"item": [
+		{
+			"name": "api",
+			"item": [
+				{
+					"name": "Auth",
+					"item": [
+						{
+							"name": "login",
+							"item": [
+								{
+									"name": "/api/Auth/login",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userName\": \"dolor magna ea laborum\",\n  \"password\": \"occaecat proident\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/Auth/login",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"Auth",
+												"login"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Success",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"userName\": \"dolor magna ea laborum\",\n  \"password\": \"occaecat proident\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/Auth/login",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"Auth",
+														"login"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"success\": false,\n  \"token\": \"sunt qui non sed eiusmod\",\n  \"errors\": [\n    \"dolore occaecat in anim est\",\n    \"dolore elit\"\n  ]\n}"
+										},
+										{
+											"name": "Bad Request",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"userName\": \"dolor magna ea laborum\",\n  \"password\": \"occaecat proident\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/Auth/login",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"Auth",
+														"login"
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "User",
+					"item": [
+						{
+							"name": "GetUserList",
+							"item": [
+								{
+									"name": "/api/User/GetUserList",
+									"request": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userName\": \"velit ea\",\n  \"email\": \"proident deserunt dolore\",\n  \"documento\": \"nulla ullamco laborum reprehenderit ea\",\n  \"numPagina\": 19245628,\n  \"registrosPagina\": 53045330,\n  \"sortColumn\": \"quis dolore sint\",\n  \"sortOrden\": \"do ex\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User/GetUserList",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User",
+												"GetUserList"
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Success",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"userName\": \"velit ea\",\n  \"email\": \"proident deserunt dolore\",\n  \"documento\": \"nulla ullamco laborum reprehenderit ea\",\n  \"numPagina\": 19245628,\n  \"registrosPagina\": 53045330,\n  \"sortColumn\": \"quis dolore sint\",\n  \"sortOrden\": \"do ex\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/User/GetUserList",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														"GetUserList"
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"userId\": \"commodo et\",\n  \"userName\": \"irure o\",\n  \"primerNombre\": \"nostrud veniam sunt mollit\",\n  \"segundoNombre\": \"est cillum\",\n  \"primerApellido\": \"dolor do ex Ut\",\n  \"segundoApellido\": \"in Ut laborum ut\",\n  \"tipoDocumento\": \"laboris non\",\n  \"numeroDocumento\": \"eu et laborum sit\",\n  \"email\": \"ut exercitation\",\n  \"phoneNumber\": \"et nisi\",\n  \"userRoles\": \"sed Duis ullamco sint\",\n  \"userClaims\": \"dolor et venia\"\n}"
+										},
+										{
+											"name": "Server Error",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"userName\": \"velit ea\",\n  \"email\": \"proident deserunt dolore\",\n  \"documento\": \"nulla ullamco laborum reprehenderit ea\",\n  \"numPagina\": 19245628,\n  \"registrosPagina\": 53045330,\n  \"sortColumn\": \"quis dolore sint\",\n  \"sortOrden\": \"do ex\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/api/User/GetUserList",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														"GetUserList"
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "{UserId}",
+							"item": [
+								{
+									"name": "/api/User/:UserId",
+									"request": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/User/:UserId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User",
+												":UserId"
+											],
+											"variable": [
+												{
+													"key": "UserId",
+													"value": "culpa deserunt",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Success",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"idUsuario\": \"non\",\n  \"primerNombre\": \"tempor sed anim\",\n  \"segundoNombre\": \"nostrud aliqua\",\n  \"primerApellido\": \"commodo labore amet ullamco aliquip\",\n  \"segundoApellido\": \"proident aute consequat exercitation\",\n  \"tipoDocumento\": \"laborum nostrud\",\n  \"numeroDocumento\": \"ut elit sed i\",\n  \"email\": \"ipsum minim magna\",\n  \"phoneNumber\": \"laborum nostrud \",\n  \"twoFactorEnabled\": true,\n  \"userRoles\": [\n    {\n      \"name\": \"laborum enim sunt\"\n    },\n    {\n      \"name\": \"voluptate commodo do labore\"\n    }\n  ],\n  \"userClaims\": [\n    {\n      \"claimType\": \"in eiusmod sed dolor ex\",\n      \"claimValue\": \"commodo Duis mollit cillum\"\n    },\n    {\n      \"claimType\": \"sint\",\n      \"claimValue\": \"minim sit dolore ipsum occaecat\"\n    }\n  ]\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+										},
+										{
+											"name": "Server Error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								},
+								{
+									"name": "/api/User/:UserId",
+									"request": {
+										"method": "DELETE",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/api/User/:UserId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User",
+												":UserId"
+											],
+											"variable": [
+												{
+													"key": "UserId",
+													"value": "culpa deserunt",
+													"description": "(Required) "
+												}
+											]
+										}
+									},
+									"response": [
+										{
+											"name": "Success",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"success\": false,\n  \"errors\": [\n    \"aute ut Ut aliquip\",\n    \"ea qui\"\n  ]\n}"
+										},
+										{
+											"name": "Not Found",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Accept",
+														"value": "text/plain"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "json",
+											"header": [
+												{
+													"key": "Content-Type",
+													"value": "application/json"
+												}
+											],
+											"cookie": [],
+											"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+										},
+										{
+											"name": "Server Error",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/api/User/:UserId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"api",
+														"User",
+														":UserId"
+													],
+													"variable": [
+														{
+															"key": "UserId"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						},
+						{
+							"name": "/api/User",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "text/plain"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"primerNombre\": \"exercitation adipisicing fugiat Duis sint\",\n  \"segundoNombre\": \"do Excepteur\",\n  \"primerApellido\": \"commodo nulla\",\n  \"segundoApellido\": \"laboris ipsum commodo in\",\n  \"tipoDocumento\": \"ex amet nisi\",\n  \"numeroDocumento\": \"ut occaecat deserunt in\",\n  \"email\": \"veniam dolor elit\",\n  \"nitEntidad\": \"Duis ad dolore irure non\",\n  \"rolesSolicitados\": [\n    \"consequat commodo deserunt est\",\n    \"eiusmod ullamco enim\"\n  ]\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/User",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"User"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Created",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"primerNombre\": \"exercitation adipisicing fugiat Duis sint\",\n  \"segundoNombre\": \"do Excepteur\",\n  \"primerApellido\": \"commodo nulla\",\n  \"segundoApellido\": \"laboris ipsum commodo in\",\n  \"tipoDocumento\": \"ex amet nisi\",\n  \"numeroDocumento\": \"ut occaecat deserunt in\",\n  \"email\": \"veniam dolor elit\",\n  \"nitEntidad\": \"Duis ad dolore irure non\",\n  \"rolesSolicitados\": [\n    \"consequat commodo deserunt est\",\n    \"eiusmod ullamco enim\"\n  ]\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"userId\": \"mollit elit\",\n  \"success\": false,\n  \"errors\": [\n    \"deserunt ipsum\",\n    \"anim id sunt\"\n  ]\n}"
+								},
+								{
+									"name": "Bad Request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"primerNombre\": \"exercitation adipisicing fugiat Duis sint\",\n  \"segundoNombre\": \"do Excepteur\",\n  \"primerApellido\": \"commodo nulla\",\n  \"segundoApellido\": \"laboris ipsum commodo in\",\n  \"tipoDocumento\": \"ex amet nisi\",\n  \"numeroDocumento\": \"ut occaecat deserunt in\",\n  \"email\": \"veniam dolor elit\",\n  \"nitEntidad\": \"Duis ad dolore irure non\",\n  \"rolesSolicitados\": [\n    \"consequat commodo deserunt est\",\n    \"eiusmod ullamco enim\"\n  ]\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+								},
+								{
+									"name": "Server Error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"primerNombre\": \"exercitation adipisicing fugiat Duis sint\",\n  \"segundoNombre\": \"do Excepteur\",\n  \"primerApellido\": \"commodo nulla\",\n  \"segundoApellido\": \"laboris ipsum commodo in\",\n  \"tipoDocumento\": \"ex amet nisi\",\n  \"numeroDocumento\": \"ut occaecat deserunt in\",\n  \"email\": \"veniam dolor elit\",\n  \"nitEntidad\": \"Duis ad dolore irure non\",\n  \"rolesSolicitados\": [\n    \"consequat commodo deserunt est\",\n    \"eiusmod ullamco enim\"\n  ]\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						},
+						{
+							"name": "/api/User",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "text/plain"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"userId\": \"sunt sit\",\n  \"primerNombre\": \"magna dolor sit\",\n  \"primerApellido\": \"non laboris in sunt nulla\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/User",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"User"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userId\": \"sunt sit\",\n  \"primerNombre\": \"magna dolor sit\",\n  \"primerApellido\": \"non laboris in sunt nulla\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"success\": false,\n  \"errors\": [\n    \"aute ut Ut aliquip\",\n    \"ea qui\"\n  ]\n}"
+								},
+								{
+									"name": "Bad Request",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userId\": \"sunt sit\",\n  \"primerNombre\": \"magna dolor sit\",\n  \"primerApellido\": \"non laboris in sunt nulla\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+								},
+								{
+									"name": "Not Found",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "text/plain"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userId\": \"sunt sit\",\n  \"primerNombre\": \"magna dolor sit\",\n  \"primerApellido\": \"non laboris in sunt nulla\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"type\": \"quis eiusmo\",\n  \"title\": \"qui eiusmod\",\n  \"status\": -62106735,\n  \"detail\": \"dolore\",\n  \"instance\": \"ut minim Duis\",\n  \"ea03b\": {},\n  \"laboris7\": {},\n  \"dobc\": {}\n}"
+								},
+								{
+									"name": "Server Error",
+									"originalRequest": {
+										"method": "PUT",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"userId\": \"sunt sit\",\n  \"primerNombre\": \"magna dolor sit\",\n  \"primerApellido\": \"non laboris in sunt nulla\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/api/User",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"User"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "WeatherForecast",
+			"item": [
+				{
+					"name": "Get Weather Forecast",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "text/plain"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/WeatherForecast",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"WeatherForecast"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "text/plain"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/WeatherForecast",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"WeatherForecast"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "[\n  {\n    \"date\": {\n      \"year\": -30323285,\n      \"month\": -34931230,\n      \"day\": -82736528,\n      \"dayOfWeek\": 5,\n      \"dayOfYear\": -65284332,\n      \"dayNumber\": 68828844\n    },\n    \"temperatureC\": 5004244,\n    \"temperatureF\": -17059805,\n    \"summary\": \"sit\"\n  },\n  {\n    \"date\": {\n      \"year\": -26967308,\n      \"month\": 83477464,\n      \"day\": 36182360,\n      \"dayOfWeek\": 6,\n      \"dayOfYear\": 84817085,\n      \"dayNumber\": -20711989\n    },\n    \"temperatureC\": -10069870,\n    \"temperatureF\": -87711248,\n    \"summary\": \"fugiat culpa in ut\"\n  }\n]"
+						}
+					]
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{bearerToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "/"
+		}
+	]
+}

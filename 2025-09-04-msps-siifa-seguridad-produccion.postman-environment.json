@@ -1,0 +1,21 @@
+{
+	"id": "dc1a0526-69c7-4af2-9190-48b32af0b605",
+	"name": "MSPS SIIFA - Seguridad - Produccion",
+	"values": [
+		{
+			"key": "baseUrl",
+			"value": "https://siifa.sispro.gov.co/siifa-seguridad",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "bearerToken",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2025-11-14T21:10:27.927Z",
+	"_postman_exported_using": "Postman/11.71.0"
+}
