@@ -100,6 +100,30 @@ class SiifaClient:
             raise SiifaApiError("Respuesta inesperada al consultar detalle de factura", payload=result)
         return result
 
+    def list_rips_transaccion(self, **query_params) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/RipsTransaccion")
+        query = {k: v for k, v in query_params.items() if v is not None and v != ""}
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query, doseq=True)}"
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar RIPS Transacción", payload=result)
+        return result
+
+    def list_rips_usuarios(self, **query_params) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/RipsUsuarios")
+        query = {k: v for k, v in query_params.items() if v is not None and v != ""}
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query, doseq=True)}"
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar RIPS Usuarios", payload=result)
+        return result
+
     def iter_facturas(self, **query_params):
         page = int(query_params.get("NumeroPagina") or 1)
         per_page = int(query_params.get("RegistrosPorPagina") or 1500)

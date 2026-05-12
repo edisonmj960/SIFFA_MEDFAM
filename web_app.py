@@ -70,6 +70,112 @@ def _make_client_with_token(token: str) -> SiifaClient:
     return client
 
 
+def _rips_paciente_docs_by_factura(
+    client: SiifaClient,
+    id_factura: int,
+    numero_factura: str | None = None,
+    nit_emisor: str | None = None,
+    max_transacciones: int = 10,
+) -> tuple[list[dict], str | None]:
+    def _result_list(value) -> list:
+        if isinstance(value, list):
+            return value
+        if isinstance(value, dict):
+            for k in ("resultado", "Resultado", "items", "Items", "data", "Data"):
+                v = value.get(k)
+                if isinstance(v, list):
+                    return v
+        return []
+
+    def _get_any(d: dict, *keys):
+        for k in keys:
+            if k in d:
+                return d.get(k)
+        lower = {str(k).lower(): v for k, v in d.items()}
+        for k in keys:
+            lk = str(k).lower()
+            if lk in lower:
+                return lower.get(lk)
+        return None
+
+    trans_page = None
+    last_err = None
+    queries: list[dict] = [
+        {"idFactura": int(id_factura), "numeroPagina": 1, "registrosPorPagina": 50},
+    ]
+    if numero_factura:
+        queries.append({"numeroFactura": str(numero_factura), "numeroPagina": 1, "registrosPorPagina": 50})
+        try:
+            nit_num = float(str(nit_emisor).strip()) if nit_emisor is not None and str(nit_emisor).strip() else None
+        except Exception:
+            nit_num = None
+        if nit_num is not None:
+            queries.append(
+                {
+                    "numeroFactura": str(numero_factura),
+                    "numeroDocumentoIdObligado": nit_num,
+                    "numeroPagina": 1,
+                    "registrosPorPagina": 50,
+                }
+            )
+
+    for q in queries:
+        try:
+            trans_page = client.list_rips_transaccion(**q)
+        except SiifaApiError as e:
+            last_err = f"{e}"
+            break
+        except Exception as e:
+            last_err = str(e)
+            break
+        trans_items_try = _result_list(trans_page)
+        if trans_items_try:
+            break
+    if trans_page is None:
+        return [], last_err
+
+    trans_items = _result_list(trans_page)
+    if not trans_items:
+        return [], last_err
+
+    docs = []
+    seen = set()
+    for t in trans_items[:max_transacciones]:
+        if not isinstance(t, dict):
+            continue
+        id_trans = _get_any(t, "idTransaccion", "IdTransaccion")
+        try:
+            id_trans = int(id_trans)
+        except Exception:
+            continue
+        try:
+            users_page = client.list_rips_usuarios(idTransaccion=id_trans, numeroPagina=1, registrosPorPagina=200)
+        except SiifaApiError:
+            continue
+        users = _result_list(users_page)
+        for u in users:
+            if not isinstance(u, dict):
+                continue
+            numero = _get_any(u, "u02NumeroDocumentoIdentificacion", "U02NumeroDocumentoIdentificacion")
+            tipo = _get_any(u, "u01TipoDocumentoIdentificacion", "U01TipoDocumentoIdentificacion")
+            tipo_usuario = _get_any(u, "u03TipoUsuario", "U03TipoUsuario")
+            key = (str(tipo or "").strip(), str(numero or "").strip(), str(tipo_usuario or "").strip())
+            if not key[1]:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            docs.append(
+                {
+                    "tipoDocumento": tipo,
+                    "numeroDocumento": numero,
+                    "tipoUsuario": tipo_usuario,
+                    "idTransaccion": id_trans,
+                }
+            )
+    return docs, last_err
+
+
 def _get_session() -> dict | None:
     sid = _get_session_id()
     if not sid:
@@ -206,6 +312,18 @@ def _to_iso_z(value) -> str | None:
     if "T" in s:
         return s
     return f"{s}T00:00:00Z"
+
+
+def _as_list_result(value) -> list:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, dict):
+        items = value.get("resultado")
+        if isinstance(items, list):
+            return items
+    return []
 
 
 def _xlsx_bytes(sheet_name: str, headers: list[str], rows: list[dict]) -> bytes:
@@ -574,7 +692,7 @@ HTML = """
         <tbody>
           {% for it in page.resultado or [] %}
             <tr>
-              <td>{{ it.idFactura }}</td>
+              <td><a href="/factura/{{ it.idFactura }}">{{ it.idFactura }}</a></td>
               <td>{{ it.numeroFactura }}</td>
               <td style="max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ it.cufe }}</td>
               <td>{{ it.tipoFactura }}</td>
@@ -818,6 +936,46 @@ def index():
     return Response(body, mimetype="text/html; charset=utf-8")
 
 
+@app.route("/factura/<int:id_factura>", methods=["GET"])
+def factura_detalle(id_factura: int):
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    client = _make_client_with_token(token)
+    error = None
+    details = None
+    factura = None
+    rips_docs = []
+    rips_error = None
+    try:
+        factura = client.get_factura(int(id_factura))
+    except SiifaApiError as e:
+        error = str(e)
+        details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
+    except Exception as e:
+        error = str(e)
+
+    if factura:
+        numero_factura = factura.get("numeroFactura") if isinstance(factura, dict) else None
+        em = factura.get("emisor") if isinstance(factura, dict) and isinstance(factura.get("emisor"), dict) else {}
+        nit_emisor = (em or {}).get("nitEmisor")
+        rips_docs, rips_error = _rips_paciente_docs_by_factura(client, int(id_factura), numero_factura=numero_factura, nit_emisor=nit_emisor)
+
+    from jinja2 import Template
+    body = Template(FACTURA_DETALLE_HTML).render(
+        nav=_render_nav("facturas"),
+        base_css=BASE_CSS,
+        footer=_render_footer(),
+        idFactura=int(id_factura),
+        factura=factura,
+        rips_docs=rips_docs,
+        rips_error=rips_error,
+        error=error,
+        details=details,
+    )
+    return Response(body, mimetype="text/html; charset=utf-8")
+
+
 SEGUIMIENTO_HTML = """
 <!doctype html>
 <html lang="es">
@@ -915,6 +1073,96 @@ SEGUIMIENTO_HTML = """
     </div>
   {% endif %}
   {{ footer|safe }}
+  </main>
+</body>
+</html>
+"""
+
+
+FACTURA_DETALLE_HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detalle factura</title>
+  <style>{{ base_css|safe }}</style>
+</head>
+<body>
+  {{ nav|safe }}
+  <main class="container">
+    <div class="page-title">
+      <h1>Detalle de factura</h1>
+      <div class="meta">IdFactura: {{ idFactura }}</div>
+    </div>
+
+    {% if error %}
+      <div class="error">
+        <strong>Error:</strong> {{ error }}
+        {% if details %}<pre>{{ details }}</pre>{% endif %}
+      </div>
+    {% endif %}
+
+    {% if factura %}
+      <div class="card" style="margin-bottom: 14px;">
+        <div class="meta" style="margin-bottom:10px;">Información de la factura</div>
+        <div class="grid" style="max-height:none;">
+          <table>
+            <tbody>
+              <tr><th style="width:240px;">Número factura</th><td>{{ factura.numeroFactura }}</td></tr>
+              <tr><th>CUFE</th><td style="max-width:900px; overflow:hidden; text-overflow:ellipsis;">{{ factura.cufe }}</td></tr>
+              <tr><th>NIT Emisor</th><td>{{ (factura.emisor or {}).get('nitEmisor') }}</td></tr>
+              <tr><th>Emisor</th><td>{{ (factura.emisor or {}).get('razonSocial') }}</td></tr>
+              <tr><th>NIT Adquiriente</th><td>{{ (factura.adquiriente or {}).get('nitAdquiriente') }}</td></tr>
+              <tr><th>Adquiriente</th><td>{{ (factura.adquiriente or {}).get('razonSocial') }}</td></tr>
+              <tr><th>Fecha emisión</th><td>{{ factura.fechaEmision }}</td></tr>
+              <tr><th>Valor factura</th><td>{{ factura.valorFactura }}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="card" style="margin-bottom: 14px;">
+      <div class="meta" style="margin-bottom:10px;">Paciente (RIPS)</div>
+      {% if rips_error %}
+        <div class="error"><strong>Error:</strong> {{ rips_error }}</div>
+      {% endif %}
+      {% if rips_docs and (rips_docs|length) > 0 %}
+        <div class="grid" style="max-height:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo documento</th>
+                <th>Número documento</th>
+                <th>Tipo usuario</th>
+                <th>IdTransacción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for it in rips_docs %}
+                <tr>
+                  <td>{{ it.tipoDocumento }}</td>
+                  <td>{{ it.numeroDocumento }}</td>
+                  <td>{{ it.tipoUsuario }}</td>
+                  <td>{{ it.idTransaccion }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="meta">No hay datos RIPS para esta factura (o no hay permisos para consultarlos).</div>
+      {% endif %}
+    </div>
+
+    <div class="actions">
+      <a href="/">Volver a Facturas</a>
+      <a href="/seguimiento?IdFactura={{ idFactura }}">Ver Seguimiento</a>
+      <a href="/responder-glosas?IdFactura={{ idFactura }}">Responder glosas</a>
+    </div>
+
+    {{ footer|safe }}
   </main>
 </body>
 </html>
@@ -1612,7 +1860,15 @@ RESPONDER_GLOSAS_HTML = """
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Responder glosas</title>
-  <style>{{ base_css|safe }}</style>
+  <style>
+    {{ base_css|safe }}
+    .modal-overlay{ position:fixed; inset:0; background:rgba(15,23,42,.35); display:none; align-items:center; justify-content:center; padding:18px; z-index:200; }
+    .modal{ width:min(720px, 100%); background:var(--surface); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); padding:14px; }
+    .modal-header{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .modal-title{ font-weight:900; font-size:16px; }
+    .modal-close{ background:transparent; border:1px solid var(--border); }
+    .pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid var(--border); background:rgba(14,165,233,.08); color:rgba(15,23,42,.8); font-size:12px; }
+  </style>
 </head>
 <body>
   {{ nav|safe }}
@@ -1626,6 +1882,11 @@ RESPONDER_GLOSAS_HTML = """
     <div class="error">
       <strong>Error:</strong> {{ error }}
       {% if details %}<pre>{{ details }}</pre>{% endif %}
+    </div>
+  {% endif %}
+  {% if success %}
+    <div class="card" style="margin-bottom: 14px;">
+      <strong>{{ success }}</strong>
     </div>
   {% endif %}
 
@@ -1652,10 +1913,13 @@ RESPONDER_GLOSAS_HTML = """
             <th>idFactura</th>
             <th>numeroFactura</th>
             <th>nitEmisor</th>
+            <th>tipoDocumentoPaciente</th>
+            <th>numeroDocumentoPaciente</th>
             <th>idSeguimientoTipoCodigoGlosa</th>
             <th>fechaFormulacion</th>
             <th>valorGlosa</th>
             <th>observacion</th>
+            <th>acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -1665,16 +1929,102 @@ RESPONDER_GLOSAS_HTML = """
             <td>{{ it.idFactura }}</td>
             <td>{{ it.numeroFactura }}</td>
             <td>{{ it.nitEmisor }}</td>
+            <td>{{ it.tipoDocumentoPaciente }}</td>
+            <td>{{ it.numeroDocumentoPaciente }}</td>
             <td>{{ it.idSeguimientoTipoCodigoGlosa }}</td>
             <td>{{ it.fechaFormulacion }}</td>
             <td>{{ it.valorGlosa }}</td>
             <td style="max-width:520px;">{{ it.observacion }}</td>
+            <td><button type="button" onclick="openResponderModal('{{ it.idSeguimientoFacturaGlosa }}','{{ it.numeroFactura }}')">Responder</button></td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   {% endif %}
+
+  <div id="responderOverlay" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Responder glosa</div>
+          <div class="pill">Seguimiento: <span id="m_sid"></span> · Factura: <span id="m_factura"></span></div>
+        </div>
+        <button type="button" class="modal-close" onclick="closeResponderModal()">Cerrar</button>
+      </div>
+      <form method="post">
+        <input type="hidden" name="modo" value="single" />
+        <input type="hidden" name="IdFactura" value="{{ q.IdFactura or '' }}" />
+        <input type="hidden" name="NumeroFactura" value="{{ q.NumeroFactura or '' }}" />
+        <input type="hidden" name="NitEmisor" value="{{ q.NitEmisor or '' }}" />
+        <input type="hidden" name="RegistrosPorPagina" value="{{ q.RegistrosPorPagina or 1500 }}" />
+        <label>
+          idSeguimientoFacturaGlosa
+          <input id="m_idSeguimientoFacturaGlosa" name="idSeguimientoFacturaGlosa" readonly />
+        </label>
+        <label>
+          idSeguimientoTipoCodigoRespuesta
+          {% if catalogo_respuesta and (catalogo_respuesta|length) > 0 %}
+            <select id="m_idSeguimientoTipoCodigoRespuesta" name="idSeguimientoTipoCodigoRespuesta" required>
+              <option value="">Seleccione…</option>
+              {% for c in catalogo_respuesta or [] %}
+                <option value="{{ c.idSeguimientoTipoCodigo }}">{{ c.idSeguimientoTipoCodigo }} - {{ c.descripcion }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input id="m_idSeguimientoTipoCodigoRespuesta_txt" name="idSeguimientoTipoCodigoRespuesta" placeholder="Ej: RESP01 o RE9603" required />
+          {% endif %}
+          {% if catalogo_respuesta_error %}
+            <div class="meta">{{ catalogo_respuesta_error }}</div>
+          {% endif %}
+        </label>
+        <label>
+          fechaRespuesta
+          <input id="m_fechaRespuesta" name="fechaRespuesta" type="datetime-local" required />
+        </label>
+        <label style="grid-column: 1 / -1;">
+          observacionRespuesta (máx 450)
+          <input id="m_observacionRespuesta" name="observacionRespuesta" maxlength="450" />
+        </label>
+        <div class="actions">
+          <button type="submit">Enviar respuesta</button>
+          <button type="button" onclick="closeResponderModal()">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function _fmtLocalDatetime(d){
+      const pad = (n) => String(n).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      const mm = pad(d.getMonth()+1);
+      const dd = pad(d.getDate());
+      const hh = pad(d.getHours());
+      const mi = pad(d.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+    function openResponderModal(sid, numeroFactura){
+      const overlay = document.getElementById('responderOverlay');
+      document.getElementById('m_sid').textContent = sid || '';
+      document.getElementById('m_factura').textContent = numeroFactura || '';
+      document.getElementById('m_idSeguimientoFacturaGlosa').value = sid || '';
+      document.getElementById('m_fechaRespuesta').value = _fmtLocalDatetime(new Date());
+      document.getElementById('m_observacionRespuesta').value = '';
+      const sel = document.getElementById('m_idSeguimientoTipoCodigoRespuesta');
+      if (sel) { sel.value = ''; }
+      const txt = document.getElementById('m_idSeguimientoTipoCodigoRespuesta_txt');
+      if (txt) { txt.value = ''; }
+      overlay.style.display = 'flex';
+    }
+    function closeResponderModal(){
+      const overlay = document.getElementById('responderOverlay');
+      overlay.style.display = 'none';
+    }
+    document.addEventListener('keydown', function(e){
+      if (e.key === 'Escape'){ closeResponderModal(); }
+    });
+  </script>
 
   <div class="card" style="margin-bottom: 14px;">
     <form method="post" enctype="multipart/form-data">
@@ -1742,73 +2092,112 @@ def responder_glosas():
 
     error = None
     details = None
+    success = None
     preview = None
     pendientes_preview = None
     pendientes_total = None
+    catalogo_respuesta = None
+    catalogo_respuesta_error = None
 
     if request.method == "POST":
         try:
-            file = request.files.get("archivo")
-            if not file:
-                raise ValueError("Debe adjuntar un archivo Excel (.xlsx)")
-            in_rows = _parse_uploaded_xlsx(file)
-
             client = _make_client_with_token(token)
-            resultados = []
-            for r in in_rows:
-                if not isinstance(r, dict):
-                    continue
-                sid = _coerce_int(_row_get(r, "idSeguimientoFacturaGlosa", "IdSeguimientoFacturaGlosa", "idSeguimientoFactura"))
-                if sid is None or int(sid) <= 0:
-                    continue
-                resp_code = (str(_row_get(r, "idSeguimientoTipoCodigoRespuesta", "IdSeguimientoTipoCodigoRespuesta") or "").strip() or None)
-                fecha_resp = _to_iso_z(_row_get(r, "fechaRespuesta", "FechaRespuesta"))
-                obs_resp = (str(_row_get(r, "observacionRespuesta", "ObservacionRespuesta") or "").strip() or None)
-
-                numero_factura = (str(_row_get(r, "numeroFactura", "NumeroFactura") or "").strip() or None)
-                tipo_glosa = (str(_row_get(r, "idSeguimientoTipoCodigoGlosa", "IdSeguimientoTipoCodigoGlosa") or "").strip() or None)
-                valor_glosa = _coerce_float(_row_get(r, "valorGlosa", "ValorGlosa"))
-                obs = (str(_row_get(r, "observacion", "Observacion") or "").strip() or None)
+            if (request.form.get("modo") or "").strip().lower() == "single":
+                sid = _coerce_int(request.form.get("idSeguimientoFacturaGlosa") or request.form.get("idSeguimientoFactura"))
+                resp_code = (request.form.get("idSeguimientoTipoCodigoRespuesta") or "").strip() or None
+                fecha_in = (request.form.get("fechaRespuesta") or "").strip() or None
+                if fecha_in and "T" in fecha_in and not fecha_in.endswith("Z") and "+" not in fecha_in:
+                    if len(fecha_in) == 16:
+                        fecha_in = f"{fecha_in}:00Z"
+                    elif len(fecha_in) == 19:
+                        fecha_in = f"{fecha_in}Z"
+                fecha_resp = _to_iso_z(fecha_in)
+                obs_resp = (request.form.get("observacionRespuesta") or "").strip() or None
 
                 item_out = {
                     "idSeguimientoFacturaGlosa": sid,
-                    "numeroFactura": numero_factura,
-                    "idSeguimientoTipoCodigoGlosa": tipo_glosa,
-                    "valorGlosa": valor_glosa,
-                    "observacion": obs,
+                    "numeroFactura": request.form.get("NumeroFactura") or None,
                     "idSeguimientoTipoCodigoRespuesta": resp_code,
                     "fechaRespuesta": fecha_resp,
                     "observacionRespuesta": obs_resp,
                 }
+                if not sid or not resp_code or not fecha_resp:
+                    raise ValueError("Faltan campos obligatorios: idSeguimientoFacturaGlosa, idSeguimientoTipoCodigoRespuesta, fechaRespuesta")
+                if obs_resp is not None and len(str(obs_resp)) > 450:
+                    raise ValueError("observacionRespuesta supera 450 caracteres. Redúzcala o resuma el texto.")
+                payload = {
+                    "idSeguimientoFacturaGlosa": int(sid),
+                    "idSeguimientoTipoCodigoRespuesta": resp_code,
+                    "fechaRespuesta": fecha_resp,
+                    "observacionRespuesta": obs_resp,
+                }
+                client.responder_glosa(payload)
+                item_out["ok"] = True
+                item_out["error"] = None
+                _set_session_value("responder_glosas_last_obj", [item_out])
+                _set_session_value("responder_glosas_last_json", json.dumps([item_out], ensure_ascii=False, indent=2))
+                preview = [item_out]
+                success = "Respuesta enviada."
+            else:
+                file = request.files.get("archivo")
+                if not file:
+                    raise ValueError("Debe adjuntar un archivo Excel (.xlsx)")
+                in_rows = _parse_uploaded_xlsx(file)
+                resultados = []
+                for r in in_rows:
+                    if not isinstance(r, dict):
+                        continue
+                    sid = _coerce_int(_row_get(r, "idSeguimientoFacturaGlosa", "IdSeguimientoFacturaGlosa", "idSeguimientoFactura"))
+                    if sid is None or int(sid) <= 0:
+                        continue
+                    resp_code = (str(_row_get(r, "idSeguimientoTipoCodigoRespuesta", "IdSeguimientoTipoCodigoRespuesta") or "").strip() or None)
+                    fecha_resp = _to_iso_z(_row_get(r, "fechaRespuesta", "FechaRespuesta"))
+                    obs_resp = (str(_row_get(r, "observacionRespuesta", "ObservacionRespuesta") or "").strip() or None)
 
-                try:
-                    if not sid or not resp_code or not fecha_resp:
-                        raise ValueError("Faltan campos obligatorios: idSeguimientoFacturaGlosa, idSeguimientoTipoCodigoRespuesta, fechaRespuesta")
-                    if obs_resp is not None and len(str(obs_resp)) > 450:
-                        raise ValueError("observacionRespuesta supera 450 caracteres. Redúzcala o resuma el texto.")
-                    payload = {
-                        "idSeguimientoFacturaGlosa": int(sid),
+                    numero_factura = (str(_row_get(r, "numeroFactura", "NumeroFactura") or "").strip() or None)
+                    tipo_glosa = (str(_row_get(r, "idSeguimientoTipoCodigoGlosa", "IdSeguimientoTipoCodigoGlosa") or "").strip() or None)
+                    valor_glosa = _coerce_float(_row_get(r, "valorGlosa", "ValorGlosa"))
+                    obs = (str(_row_get(r, "observacion", "Observacion") or "").strip() or None)
+
+                    item_out = {
+                        "idSeguimientoFacturaGlosa": sid,
+                        "numeroFactura": numero_factura,
+                        "idSeguimientoTipoCodigoGlosa": tipo_glosa,
+                        "valorGlosa": valor_glosa,
+                        "observacion": obs,
                         "idSeguimientoTipoCodigoRespuesta": resp_code,
                         "fechaRespuesta": fecha_resp,
                         "observacionRespuesta": obs_resp,
                     }
-                    client.responder_glosa(payload)
-                    item_out["ok"] = True
-                    item_out["error"] = None
-                except SiifaApiError as e:
-                    item_out["ok"] = False
-                    item_out["error"] = str(e)
-                    item_out["payload"] = e.payload
-                except Exception as e:
-                    item_out["ok"] = False
-                    item_out["error"] = str(e)
-                    item_out["payload"] = None
 
-                resultados.append(item_out)
+                    try:
+                        if not sid or not resp_code or not fecha_resp:
+                            raise ValueError("Faltan campos obligatorios: idSeguimientoFacturaGlosa, idSeguimientoTipoCodigoRespuesta, fechaRespuesta")
+                        if obs_resp is not None and len(str(obs_resp)) > 450:
+                            raise ValueError("observacionRespuesta supera 450 caracteres. Redúzcala o resuma el texto.")
+                        payload = {
+                            "idSeguimientoFacturaGlosa": int(sid),
+                            "idSeguimientoTipoCodigoRespuesta": resp_code,
+                            "fechaRespuesta": fecha_resp,
+                            "observacionRespuesta": obs_resp,
+                        }
+                        client.responder_glosa(payload)
+                        item_out["ok"] = True
+                        item_out["error"] = None
+                    except SiifaApiError as e:
+                        item_out["ok"] = False
+                        item_out["error"] = str(e)
+                        item_out["payload"] = e.payload
+                    except Exception as e:
+                        item_out["ok"] = False
+                        item_out["error"] = str(e)
+                        item_out["payload"] = None
 
-            _set_session_value("responder_glosas_last_obj", resultados)
-            _set_session_value("responder_glosas_last_json", json.dumps(resultados, ensure_ascii=False, indent=2))
-            preview = resultados[:50]
+                    resultados.append(item_out)
+
+                _set_session_value("responder_glosas_last_obj", resultados)
+                _set_session_value("responder_glosas_last_json", json.dumps(resultados, ensure_ascii=False, indent=2))
+                preview = resultados[:50]
         except SiifaApiError as e:
             error = str(e)
             details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
@@ -1837,6 +2226,7 @@ def responder_glosas():
         out = []
         factura_cache: dict[int, dict] = {}
         missing_ids: set[int] = set()
+        rips_cache: dict[int, dict] = {}
         for it in items:
             if not isinstance(it, dict):
                 continue
@@ -1845,10 +2235,35 @@ def responder_glosas():
             sid = it.get("idSeguimientoFacturaGlosa") or it.get("idSeguimientoFactura")
             numero = it.get("numeroFactura") or factura_info.get("numeroFactura")
             nit_emisor = emisor.get("nitEmisor") or it.get("nitEmisor")
+            tipo_doc_pac = None
+            num_doc_pac = None
             if not numero and q.get("NumeroFactura"):
                 numero = q.get("NumeroFactura")
             if not nit_emisor and q.get("NitEmisor"):
                 nit_emisor = q.get("NitEmisor")
+            id_factura_item = it.get("idFactura")
+            try:
+                id_factura_int = int(id_factura_item) if id_factura_item is not None else None
+            except Exception:
+                id_factura_int = None
+            if id_factura_int:
+                if id_factura_int not in rips_cache:
+                    docs, _rips_err = _rips_paciente_docs_by_factura(
+                        client,
+                        id_factura_int,
+                        numero_factura=numero,
+                        nit_emisor=nit_emisor,
+                        max_transacciones=10,
+                    )
+                    if docs:
+                        rips_cache[id_factura_int] = {
+                            "tipoDocumentoPaciente": docs[0].get("tipoDocumento"),
+                            "numeroDocumentoPaciente": docs[0].get("numeroDocumento"),
+                        }
+                    else:
+                        rips_cache[id_factura_int] = {"tipoDocumentoPaciente": None, "numeroDocumentoPaciente": None}
+                tipo_doc_pac = (rips_cache.get(id_factura_int) or {}).get("tipoDocumentoPaciente")
+                num_doc_pac = (rips_cache.get(id_factura_int) or {}).get("numeroDocumentoPaciente")
             if (not numero or not nit_emisor) and it.get("idFactura"):
                 try:
                     fid = int(it.get("idFactura"))
@@ -1871,6 +2286,8 @@ def responder_glosas():
                     "idFactura": it.get("idFactura"),
                     "numeroFactura": numero,
                     "nitEmisor": nit_emisor,
+                    "tipoDocumentoPaciente": tipo_doc_pac,
+                    "numeroDocumentoPaciente": num_doc_pac,
                     "idSeguimientoTipoCodigoGlosa": it.get("idSeguimientoTipoCodigo") or it.get("idSeguimientoTipoCodigoGlosa"),
                     "descripcionSeguimientoTipoCodigoGlosa": it.get("descripcionSeguimientoTipoCodigo"),
                     "fechaFormulacion": it.get("fechaFormulacion"),
@@ -1907,6 +2324,8 @@ def responder_glosas():
                 "idFactura": 0,
                 "numeroFactura": "EJEMPLO-FACTURA",
                 "nitEmisor": "900000000",
+                "tipoDocumentoPaciente": "CC",
+                "numeroDocumentoPaciente": "1234567890",
                 "idSeguimientoTipoCodigoGlosa": "CO2301",
                 "descripcionSeguimientoTipoCodigoGlosa": "Ejemplo motivo",
                 "fechaFormulacion": "2026-04-23T16:48:48Z",
@@ -1918,20 +2337,19 @@ def responder_glosas():
             }
             pendientes = [ejemplo] + pendientes
 
-            catalogo = client.list_seguimiento_tipo_codigo_by_grupo("RESPUESTA")
+            catalogo = _as_list_result(client.list_seguimiento_tipo_codigo_by_grupo("RESPUESTA"))
             cat_rows = []
-            if isinstance(catalogo, list):
-                for c in catalogo:
-                    if isinstance(c, dict):
-                        cat_rows.append(
-                            {
-                                "idSeguimientoTipoCodigo": c.get("idSeguimientoTipoCodigo"),
-                                "descripcion": c.get("descripcion"),
-                                "nivel": c.get("nivel"),
-                                "grupo": c.get("grupo"),
-                                "activo": c.get("activo"),
-                            }
-                        )
+            for c in catalogo:
+                if isinstance(c, dict):
+                    cat_rows.append(
+                        {
+                            "idSeguimientoTipoCodigo": c.get("idSeguimientoTipoCodigo"),
+                            "descripcion": c.get("descripcion"),
+                            "nivel": c.get("nivel"),
+                            "grupo": c.get("grupo"),
+                            "activo": c.get("activo"),
+                        }
+                    )
 
             data = _xlsx_bytes_multi(
                 [
@@ -1942,6 +2360,8 @@ def responder_glosas():
                             "idFactura",
                             "numeroFactura",
                             "nitEmisor",
+                            "tipoDocumentoPaciente",
+                            "numeroDocumentoPaciente",
                             "idSeguimientoTipoCodigoGlosa",
                             "descripcionSeguimientoTipoCodigoGlosa",
                             "fechaFormulacion",
@@ -1978,11 +2398,27 @@ def responder_glosas():
             page, pendientes = _build_pendientes(client)
             pendientes_total = page.get("totalRegistros")
             pendientes_preview = pendientes[:50]
+            try:
+                catalogo_respuesta = _as_list_result(client.list_seguimiento_tipo_codigo_by_grupo("RESPUESTA"))
+                if not catalogo_respuesta:
+                    catalogo_respuesta_error = "No se pudo cargar el catálogo (RESPUESTA) o viene vacío. Puede digitar el código manualmente."
+            except Exception as e:
+                catalogo_respuesta = None
+                catalogo_respuesta_error = f"No se pudo cargar el catálogo (RESPUESTA): {e}"
         except SiifaApiError as e:
             error = str(e)
             details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
         except Exception as e:
             error = str(e)
+    else:
+        try:
+            client = _make_client_with_token(token)
+            catalogo_respuesta = _as_list_result(client.list_seguimiento_tipo_codigo_by_grupo("RESPUESTA"))
+            if not catalogo_respuesta:
+                catalogo_respuesta_error = "No se pudo cargar el catálogo (RESPUESTA) o viene vacío. Puede digitar el código manualmente."
+        except Exception as e:
+            catalogo_respuesta = None
+            catalogo_respuesta_error = f"No se pudo cargar el catálogo (RESPUESTA): {e}"
 
     last_available = _get_session_value("responder_glosas_last_json") is not None or _get_session_value("responder_glosas_last_obj") is not None
     from jinja2 import Template
@@ -1990,6 +2426,7 @@ def responder_glosas():
         nav=_render_nav("responder"),
         base_css=BASE_CSS,
         footer=_render_footer(),
+        success=success,
         q=q,
         error=error,
         details=details,
@@ -1997,6 +2434,8 @@ def responder_glosas():
         pendientes=pendientes_preview,
         pendientes_total=pendientes_total,
         last_available=last_available,
+        catalogo_respuesta=catalogo_respuesta,
+        catalogo_respuesta_error=catalogo_respuesta_error,
     )
     return Response(body, mimetype="text/html; charset=utf-8")
 
