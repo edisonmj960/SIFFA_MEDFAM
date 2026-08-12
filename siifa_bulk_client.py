@@ -35,21 +35,59 @@ def _join_url(base_url: str, path: str) -> str:
 
 
 def _build_http_session(
-    total_retries: int = 5,
-    backoff_factor: float = 1.5,
-    timeout_connect: int = 30,
-    timeout_read: int = 180,
+    total_retries: int | None = None,
+    backoff_factor: float = 1.0,
+    timeout_connect: int | None = None,
+    timeout_read: int | None = None,
 ) -> tuple["requests.Session", tuple[int, int]]:
+    if total_retries is None:
+        try:
+            total_retries = int(os.environ.get("SIIFA_MAX_RETRIES", "3"))
+        except Exception:
+            total_retries = 3
+    total_retries = max(0, min(int(total_retries), 10))
+
+    if timeout_connect is None:
+        try:
+            timeout_connect = int(os.environ.get("SIIFA_CONNECT_TIMEOUT", "10"))
+        except Exception:
+            timeout_connect = 10
+    if timeout_read is None:
+        try:
+            timeout_read = int(os.environ.get("SIIFA_READ_TIMEOUT", "60"))
+        except Exception:
+            timeout_read = 60
+    timeout_connect = max(3, min(int(timeout_connect), 120))
+    timeout_read = max(10, min(int(timeout_read), 900))
+
     session = requests.Session()
 
-    retry_strategy = Retry(
-        total=total_retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=[408, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 527],
-        allowed_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
-        raise_on_status=False,
-        respect_retry_after_header=True,
-    )
+    retry_on_status = [408, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 525, 527]
+    try:
+        retry_on_status_set = set(retry_on_status)
+        retry_connect_errors = total_retries
+        retry_read_errors = max(1, total_retries // 2)
+        retry_strategy = Retry(
+            total=total_retries,
+            connect=retry_connect_errors,
+            read=retry_read_errors,
+            status=total_retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=retry_on_status_set,
+            allowed_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            raise_on_status=False,
+            respect_retry_after_header=True,
+            remove_headers_on_redirect=["Authorization"],
+        )
+    except Exception:
+        retry_strategy = Retry(
+            total=total_retries,
+            backoff_factor=backoff_factor,
+            status_forcelist=retry_on_status,
+            allowed_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"],
+            raise_on_status=False,
+            respect_retry_after_header=True,
+        )
 
     adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=20)
     session.mount("http://", adapter)

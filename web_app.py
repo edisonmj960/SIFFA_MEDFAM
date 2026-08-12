@@ -2760,38 +2760,68 @@ def cargue_glosas_plantilla():
 
 def _extraer_troubleshooting_hints(error_msg: str) -> list[str]:
     hints: list[str] = []
-    m = str(error_msg or "").lower()
-    if any(k in m for k in ("error de red", "connectionerror", "no se pudo conectar", "name or service not known", "timed out", "timeout")):
+    m = str(error_msg or "")
+    ml = m.lower()
+
+    es_connection_error = any(
+        k in ml
+        for k in (
+            "connectionerror",
+            "connecttimeout",
+            "connection to ",
+            "error de red",
+            "no se pudo conectar",
+            "name or service not known",
+            "max retries exceeded",
+            "new connection error",
+            "failed to establish a new connection",
+        )
+    )
+    es_timeout_solo_conexion = "connect timeout" in ml or "connecttimeout" in ml
+
+    if es_connection_error:
         hints.extend([
             "1) La IP de este servidor (Render / cloud) NO está en la whitelist de SISPRO.",
             "   → Solicite a SISPRO/Minsalud agregar la IP pública del servidor a la lista de permitidos.",
-            "2) SISPRO puede requerir una IP GEOGRAPHICA de COLOMBIA.",
-            "   → Configure HTTPS_PROXY apuntando a un servidor proxy ubicado en Colombia.",
-            "   → Ejemplo: HTTPS_PROXY=http://usuario:clave@proxy-colombia:puerto",
-            "3) Alternativa: despliegue la aplicación en servidor local o VPS colombiano y configure redirección.",
-            "4) Verifique si hay firewall corporativo bloqueando salida a siifa.sispro.gov.co (puerto 443).",
+            "2) SISPRO puede requerir una IP GEOGRÁFICA de COLOMBIA (bloquea IPs de USA/EU/cloud).",
+            "   → Configure <b>HTTPS_PROXY</b> apuntando a un servidor proxy ubicado en Colombia.",
+            "   → Ejemplo: <code>HTTPS_PROXY=http://usuario:clave@proxy-colombia:puerto</code>",
+            "3) Alternativa: despliegue la aplicación en VPS colombiano (Bogotá/Medellín) o servidor local.",
+            "4) Verifique si hay firewall corporativo bloqueando salida a <b>siifa.sispro.gov.co</b> (puerto 443 TCP).",
         ])
-    if any(k in m for k in ("ssl", "tls", "certificate", "certverify")):
+        if es_timeout_solo_conexion:
+            hints.append(
+                "Nota: timeout a los 10s suele ser BLOQUEO DE PAQUETES (DROP). No es SLL ni HTTP — ni siquiera llegó "
+                "a abrir el socket. Confirmar whitelist / geoIP / proxy."
+            )
+
+    if any(k in ml for k in ("ssl error", "sslerror", "tlsv1", "certificate", "certverify", "ssl/tls")):
         hints.extend([
-            "→ Error SSL/TLS: puede deberse a inspección TLS corporativa.",
-            "   Defina SIIFA_SSL_VERIFY=0 como workaround temporal (no recomendado en producción).",
-            "   O configure el certificado raíz corporativo en el almacén de CA del sistema.",
+            "→ Error SSL/TLS: puede deberse a inspección TLS corporativa o red con proxy transparente.",
+            "   Workaround (no producción): defina <code>SIIFA_SSL_VERIFY=0</code>.",
+            "   Solución correcta: importe el certificado raíz corporativo en el almacén de CA del sistema.",
         ])
-    if any(k in m for k in ("proxy",)):
+
+    if any(k in ml for k in ("proxy error", "proxyconnectionerror", "no such host", "cannot connect to proxy", "error de proxy")) or (
+        "proxy" in ml and any(w in ml for w in ("revis", "configur", "mal", "fall", "error"))
+    ):
         hints.extend([
-            "→ Error de proxy. Revise HTTP_PROXY / HTTPS_PROXY.",
-            "   Si SIIFA debe salir directo, defina NO_PROXY=.sispro.gov.co",
+            "→ Error de proxy. Revise <code>HTTP_PROXY</code> / <code>HTTPS_PROXY</code>.",
+            "   Si SIIFA debe salir directo, defina <code>NO_PROXY=.sispro.gov.co</code>.",
         ])
-    if any(k in m for k in ("401", "unauthorized", "login falló")):
+
+    if any(k in ml for k in ("401", "unauthorized", "login falló", "usuario no autorizado", "credencial")):
         hints.extend([
-            "→ Credenciales inválidas o usuario sin permiso en SIIFA.",
-            "   Verifique userName / password. Algunas instituciones usan NIT+DV sin guiones ni puntos.",
+            "→ 401 Unauthorized: credenciales inválidas o usuario sin permiso en SIIFA.",
+            "   Verifique <b>userName</b> / <b>password</b>. Algunas entidades usan NIT+DV sin guiones ni puntos.",
         ])
-    if any(k in m for k in ("403", "forbidden")):
+
+    if any(k in ml for k in ("403", "forbidden")):
         hints.extend([
-            "→ 403 Forbidden: el rol del usuario no permite esta operación (ej: radicar, cargar glosas).",
-            "   Solicite a SISPRO asignar el rol ERP / Administrador al usuario.",
+            "→ 403 Forbidden: el rol del usuario NO permite esta operación (ej: radicar, cargar glosas).",
+            "   Solicite a SISPRO asignar el rol <b>ERP / Administrador</b> al usuario.",
         ])
+
     return hints
 
 
