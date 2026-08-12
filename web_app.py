@@ -452,7 +452,15 @@ LOGIN_HTML = """
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ingreso - MedFam SIIFA</title>
-  <style>{{ base_css|safe }}</style>
+  <style>
+    {{ base_css|safe }}
+    .hints{ background:rgba(234,179,8,.08); border:1px solid rgba(234,179,8,.3); border-radius:14px; padding:12px; margin-bottom:12px; }
+    .hints h4{ margin:0 0 8px 0; font-size:13px; color:#854d0e; }
+    .hints ol, .hints ul{ margin:0; padding-left:18px; font-size:12.5px; line-height:1.55; color:#713f12; }
+    .hints li{ margin-bottom:4px; }
+    .mini-actions{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .mini-actions a{ font-size:12.5px; color:#2563eb; }
+  </style>
 </head>
 <body>
   <main class="container">
@@ -471,13 +479,23 @@ LOGIN_HTML = """
       {% if error %}
         <div class="error">
           <strong>Error:</strong> {{ error }}
-          {% if details %}<pre>{{ details }}</pre>{% endif %}
+          {% if details %}<pre style="margin-top:8px; max-height:200px; overflow:auto;">{{ details }}</pre>{% endif %}
+        </div>
+      {% endif %}
+      {% if hints %}
+        <div class="hints">
+          <h4>Sugerencias para resolver este problema</h4>
+          <ol>
+          {% for h in hints %}
+            <li>{{ h|safe }}</li>
+          {% endfor %}
+          </ol>
         </div>
       {% endif %}
       <form method="post">
         <label>
           Usuario
-          <input name="userName" autocomplete="username" required />
+          <input name="userName" autocomplete="username" required value="{{ userName or '' }}" />
         </label>
         <label>
           Contraseña
@@ -485,6 +503,11 @@ LOGIN_HTML = """
         </label>
         <div class="actions">
           <button type="submit">Ingresar</button>
+        </div>
+        <div class="mini-actions">
+          <a href="/health" target="_blank" rel="noopener">Diagnóstico de conectividad</a>
+          <span class="meta">·</span>
+          <span class="meta">Endpoint SIIFA: <code style="background:#f1f5f9;padding:2px 6px;border-radius:6px;">{{ seg_url }}</code></span>
         </div>
       </form>
     </div>
@@ -747,34 +770,45 @@ def _clean_query(args):
 def login():
     error = None
     details = None
+    hints = None
+    user_in = (request.form.get("userName") or request.args.get("userName") or "").strip()
+    seguridad_base_url, _factura_base_url = _get_base_urls()
     if request.method == "POST":
-        user = (request.form.get("userName") or "").strip()
         pwd = request.form.get("password") or ""
         try:
-            seguridad_base_url, factura_base_url = _get_base_urls()
-            client = SiifaClient(seguridad_base_url=seguridad_base_url, factura_base_url=factura_base_url)
-            token = client.login(user, pwd)
+            client = SiifaClient(seguridad_base_url=seguridad_base_url, factura_base_url=_factura_base_url)
+            token = client.login(user_in, pwd)
             sid = secrets.token_urlsafe(32)
-            _SESSIONS[sid] = {"token": token, "userName": user}
+            _SESSIONS[sid] = {"token": token, "userName": user_in}
             resp = redirect("/")
             resp.set_cookie("siifa_session", sid, httponly=True, samesite="Lax")
             return resp
         except SiifaApiError as e:
             if e.status == 401:
-                sid = request.cookies.get("siifa_session")
-                if sid:
-                    _SESSIONS.pop(sid, None)
+                sid_cookie = request.cookies.get("siifa_session")
+                if sid_cookie:
+                    _SESSIONS.pop(sid_cookie, None)
                 resp = redirect("/login")
                 resp.delete_cookie("siifa_session")
                 return resp
             error = str(e)
             details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
+            hints = _extraer_troubleshooting_hints(error)
         except Exception as e:
             error = str(e)
+            hints = _extraer_troubleshooting_hints(error)
 
     from jinja2 import Template
     tmpl = Template(LOGIN_HTML)
-    body = tmpl.render(error=error, details=details, base_css=BASE_CSS, footer=_render_footer())
+    body = tmpl.render(
+        error=error,
+        details=details,
+        hints=hints,
+        userName=user_in,
+        seg_url=seguridad_base_url,
+        base_css=BASE_CSS,
+        footer=_render_footer(),
+    )
     return Response(body, mimetype="text/html; charset=utf-8")
 
 
@@ -2722,6 +2756,132 @@ def cargue_glosas_plantilla():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=resp_headers,
     )
+
+
+def _extraer_troubleshooting_hints(error_msg: str) -> list[str]:
+    hints: list[str] = []
+    m = str(error_msg or "").lower()
+    if any(k in m for k in ("error de red", "connectionerror", "no se pudo conectar", "name or service not known", "timed out", "timeout")):
+        hints.extend([
+            "1) La IP de este servidor (Render / cloud) NO está en la whitelist de SISPRO.",
+            "   → Solicite a SISPRO/Minsalud agregar la IP pública del servidor a la lista de permitidos.",
+            "2) SISPRO puede requerir una IP GEOGRAPHICA de COLOMBIA.",
+            "   → Configure HTTPS_PROXY apuntando a un servidor proxy ubicado en Colombia.",
+            "   → Ejemplo: HTTPS_PROXY=http://usuario:clave@proxy-colombia:puerto",
+            "3) Alternativa: despliegue la aplicación en servidor local o VPS colombiano y configure redirección.",
+            "4) Verifique si hay firewall corporativo bloqueando salida a siifa.sispro.gov.co (puerto 443).",
+        ])
+    if any(k in m for k in ("ssl", "tls", "certificate", "certverify")):
+        hints.extend([
+            "→ Error SSL/TLS: puede deberse a inspección TLS corporativa.",
+            "   Defina SIIFA_SSL_VERIFY=0 como workaround temporal (no recomendado en producción).",
+            "   O configure el certificado raíz corporativo en el almacén de CA del sistema.",
+        ])
+    if any(k in m for k in ("proxy",)):
+        hints.extend([
+            "→ Error de proxy. Revise HTTP_PROXY / HTTPS_PROXY.",
+            "   Si SIIFA debe salir directo, defina NO_PROXY=.sispro.gov.co",
+        ])
+    if any(k in m for k in ("401", "unauthorized", "login falló")):
+        hints.extend([
+            "→ Credenciales inválidas o usuario sin permiso en SIIFA.",
+            "   Verifique userName / password. Algunas instituciones usan NIT+DV sin guiones ni puntos.",
+        ])
+    if any(k in m for k in ("403", "forbidden")):
+        hints.extend([
+            "→ 403 Forbidden: el rol del usuario no permite esta operación (ej: radicar, cargar glosas).",
+            "   Solicite a SISPRO asignar el rol ERP / Administrador al usuario.",
+        ])
+    return hints
+
+
+@app.route("/health", methods=["GET"])
+def health_check():
+    import time as _time
+    from siifa_bulk_client import _diagnostico_red
+
+    token = _require_token() or None
+    seg_url, fac_url = _get_base_urls()
+
+    t0 = _time.time()
+    try:
+        diag = _diagnostico_red(seguridad_base_url=seg_url, factura_base_url=fac_url)
+    except Exception as e:
+        diag = {"error": str(type(e).__name__) + ": " + str(e)}
+    dt_ms = round((_time.time() - t0) * 1000, 1)
+
+    proxy_info = {
+        "HTTP_PROXY": os.environ.get("HTTP_PROXY") or os.environ.get("http_proxy"),
+        "HTTPS_PROXY": os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy"),
+        "NO_PROXY": os.environ.get("NO_PROXY") or os.environ.get("no_proxy"),
+        "SIIFA_SSL_VERIFY": os.environ.get("SIIFA_SSL_VERIFY", "1"),
+    }
+
+    body = {
+        "status": "ok",
+        "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "server_time_ms": dt_ms,
+        "authenticated": token is not None,
+        "urls": {"seguridad": seg_url, "factura": fac_url},
+        "connectivity": diag,
+        "proxy_configuration": proxy_info,
+    }
+    fmt = (request.args.get("format") or "").strip().lower()
+    if fmt == "json":
+        return Response(json.dumps(body, ensure_ascii=False, indent=2), mimetype="application/json")
+
+    rows_html = ""
+    for k, v in (body.get("connectivity") or {}).items():
+        if isinstance(v, dict):
+            ok = v.get("ok")
+            status = '<span style="color:#16a34a;font-weight:700;">OK</span>' if ok else '<span style="color:#dc2626;font-weight:700;">FALLÓ</span>'
+            extra = ""
+            if ok:
+                extra = f" (HTTP {v.get('status')}, {v.get('latencia_ms')} ms)"
+            else:
+                extra = f" — {v.get('error')}"
+            rows_html += f"<tr><th style=\"text-align:left;padding:8px;\">{k}</th><td style=\"padding:8px;\">{status}{extra}</td></tr>"
+    proxy_html = ""
+    for k, v in (body.get("proxy_configuration") or {}).items():
+        if v:
+            proxy_html += f"<tr><th style=\"text-align:left;padding:8px;\">{k}</th><td style=\"padding:8px;font-family:monospace;\">{v}</td></tr>"
+        else:
+            proxy_html += f"<tr><th style=\"text-align:left;padding:8px;\">{k}</th><td style=\"padding:8px;color:#64748b;\"><em>(no configurado)</em></td></tr>"
+
+    html_page = f"""<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>Health / Diagnóstico - SIIFA MedFam</title>
+<style>{BASE_CSS}</style>
+</head><body>
+<main class="container">
+<div class="page-title"><h1>Diagnóstico de conectividad SIIFA</h1>
+<div class="meta">Prueba acceso a los endpoints de SISPRO desde este servidor.</div>
+</div>
+<div class="card">
+<h3>Conectividad</h3>
+<div class="grid" style="max-height:none;">
+<table><thead><tr><th>Servicio</th><th>Estado</th></tr></thead>
+<tbody>{rows_html or '<tr><td colspan="2" class="meta">Sin datos</td></tr>'}</tbody>
+</table>
+</div>
+</div>
+<div class="card" style="margin-top:14px;">
+<h3>Configuración proxy / SSL</h3>
+<div class="grid" style="max-height:none;">
+<table><thead><tr><th>Variable</th><th>Valor</th></tr></thead>
+<tbody>{proxy_html}</tbody>
+</table>
+</div>
+<div class="meta" style="margin-top:10px;">
+Tiempo diagnóstico: {dt_ms} ms · Autenticado: {"Sí" if body["authenticated"] else "No"}
+</div>
+<div class="actions" style="margin-top:12px;">
+<a href="/health?format=json">Ver JSON</a>
+<a href="/login">Volver a Ingreso</a>
+</div>
+</div>
+{_render_footer()}
+</main></body></html>"""
+    return Response(html_page, mimetype="text/html; charset=utf-8")
 
 
 import os

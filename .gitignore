@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv/
+
+# Flask / web
+instance/
+.webassets-cache
+static/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+__MACOSX/
+
+# Datos sensibles / temporales
+*.log
+.env
+.env.*
+!.env.example
+
+# Excel / datos de trabajo (plantillas generadas por el sistema)
+Libro1.xlsx
+Libro2.xlsx
+~$*.xlsx
+~$*.xls
+
+# Ejecutables / binarios
+*.exe
+*.dll
+*.so
+*.dylib
