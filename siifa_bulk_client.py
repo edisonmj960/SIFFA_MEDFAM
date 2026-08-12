@@ -302,6 +302,12 @@ class SiifaClient:
             raise SiifaApiError("Respuesta inesperada al consultar detalle de factura", payload=result)
         return result
 
+    def get_factura_alerta(self, id_factura: int) -> object:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/Factura/Alerta/{int(id_factura)}")
+        return _request_json("GET", url, token=self.token)
+
     def list_rips_transaccion(self, **query_params) -> dict:
         if not self.token:
             raise ValueError("Debe autenticarse primero (token vacío).")
@@ -370,6 +376,25 @@ class SiifaClient:
         result = _request_json("GET", url, token=self.token)
         if not isinstance(result, list):
             raise SiifaApiError("Respuesta inesperada al consultar radicados por factura", payload=result)
+        return result
+
+    def get_radicado(self, id_radicado: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/FacturaRadicado/{int(id_radicado)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar detalle de radicado", payload=result)
+        return result
+
+    def radicar_masivo_por_id(self, lista_radicado: list[dict]) -> list[dict]:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/FacturaRadicado/MasivoPorId")
+        body = {"listaRadicado": lista_radicado}
+        result = _request_json("POST", url, token=self.token, body=body, timeout_s=300.0)
+        if not isinstance(result, list):
+            raise SiifaApiError("Respuesta inesperada al radicar masivoPorId", payload=result)
         return result
 
     def list_seguimiento_factura(self, **query_params) -> dict:
@@ -448,6 +473,52 @@ class SiifaClient:
             raise SiifaApiError("Respuesta inesperada al consultar resumen de devoluciones", payload=result)
         return result
 
+    def calculo_devoluciones_by_id_factura(self, id_factura: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaDevolucion/Calculo/ByIdFactura/{int(id_factura)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar cálculo de devoluciones", payload=result)
+        return result
+
+    def responder_devolucion(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaDevolucion/Respuesta")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al responder devolución", payload=result)
+        return result
+
+    def responder_devoluciones_masivo(self, lista_respuestas: list[dict]) -> list[dict]:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaDevolucion/Respuesta/Masivo")
+        body = {"listaRespuestas": lista_respuestas}
+        result = _request_json("PUT", url, token=self.token, body=body, timeout_s=300.0)
+        if not isinstance(result, list):
+            raise SiifaApiError("Respuesta inesperada al responder devoluciones masivas", payload=result)
+        return result
+
+    def reiterar_devolucion(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaDevolucion/Reiteracion")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al reiterar devolución", payload=result)
+        return result
+
+    def get_devolucion(self, id_seguimiento: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaDevolucion/{int(id_seguimiento)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar detalle de devolución", payload=result)
+        return result
+
     def crear_glosas_masivo(self, lista_glosas: list[dict]) -> list[dict]:
         if not self.token:
             raise ValueError("Debe autenticarse primero (token vacío).")
@@ -497,6 +568,105 @@ class SiifaClient:
             raise SiifaApiError("Respuesta inesperada al consultar resumen de glosas", payload=result)
         return result
 
+    def calculo_glosas_by_id_factura(self, id_factura: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaGlosa/Calculo/ByIdFactura/{int(id_factura)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar cálculo de glosas", payload=result)
+        return result
+
+    def get_glosa(self, id_seguimiento: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaGlosa/{int(id_seguimiento)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar detalle de glosa", payload=result)
+        return result
+
+    def reiterar_glosa(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosa/Reiteracion")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al reiterar glosa", payload=result)
+        return result
+
+    def responder_reiteracion_glosa(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosa/ReiteracionRespuesta")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al responder reiteración de glosa", payload=result)
+        return result
+
+    def decision_final_glosa(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosa/DecisionFinal")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al registrar decisión final de glosa", payload=result)
+        return result
+
+    def list_glosas_soat_by_id_factura(self, **query_params) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosaSoat/ByIdFactura")
+        query = {k: v for k, v in query_params.items() if v is not None and v != ""}
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query, doseq=True)}"
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar glosas SOAT", payload=result)
+        return result
+
+    def get_glosa_soat(self, id_seguimiento: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaGlosaSoat/{int(id_seguimiento)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar detalle de glosa SOAT", payload=result)
+        return result
+
+    def get_glosa_soat_historial(self, id_seguimiento: int) -> object:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaGlosaSoat/{int(id_seguimiento)}/historial")
+        return _request_json("GET", url, token=self.token)
+
+    def crear_glosa_soat(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosaSoat")
+        result = _request_json("POST", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al crear glosa SOAT", payload=result)
+        return result
+
+    def agregar_mensaje_glosa_soat(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaGlosaSoat/mensaje")
+        result = _request_json("POST", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al agregar mensaje glosa SOAT", payload=result)
+        return result
+
+    def eliminar_glosa_soat(self, id_seguimiento: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaGlosaSoat/{int(id_seguimiento)}")
+        result = _request_json("DELETE", url, token=self.token, timeout_s=120.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al eliminar glosa SOAT", payload=result)
+        return result
+
     def crear_pagos_masivo(self, lista_pagos: list[dict]) -> list[dict]:
         if not self.token:
             raise ValueError("Debe autenticarse primero (token vacío).")
@@ -523,6 +693,109 @@ class SiifaClient:
         result = _request_json("GET", url, token=self.token)
         if not isinstance(result, dict):
             raise SiifaApiError("Respuesta inesperada al consultar resumen de pagos", payload=result)
+        return result
+
+    def get_pago(self, id_seguimiento: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaPago/{int(id_seguimiento)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar detalle de pago", payload=result)
+        return result
+
+    def list_estados_pago(self, id_seguimiento_pago: int) -> object:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/SeguimientoFacturaPagoEstado/ByIdSeguimientoPago/{int(id_seguimiento_pago)}")
+        return _request_json("GET", url, token=self.token)
+
+    def crear_estado_pago(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaPagoEstado")
+        result = _request_json("POST", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al crear estado de pago", payload=result)
+        return result
+
+    def crear_estados_pago_masivo(self, lista_estados: list[dict]) -> list[dict]:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/SeguimientoFacturaPagoEstado/Masivo")
+        body = {"listaEstados": lista_estados}
+        result = _request_json("POST", url, token=self.token, body=body, timeout_s=300.0)
+        if not isinstance(result, list):
+            raise SiifaApiError("Respuesta inesperada al crear estados de pago masivos", payload=result)
+        return result
+
+    def list_cuentas_bancarias(self, **query_params) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/EmpresaCuentaBancaria")
+        query = {k: v for k, v in query_params.items() if v is not None and v != ""}
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query, doseq=True)}"
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar cuentas bancarias", payload=result)
+        return result
+
+    def get_cuenta_bancaria(self, id_cuenta: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/EmpresaCuentaBancaria/{int(id_cuenta)}")
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar cuenta bancaria", payload=result)
+        return result
+
+    def crear_cuenta_bancaria(self, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/EmpresaCuentaBancaria")
+        result = _request_json("POST", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al crear cuenta bancaria", payload=result)
+        return result
+
+    def actualizar_cuenta_bancaria(self, id_cuenta: int, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/EmpresaCuentaBancaria/{int(id_cuenta)}")
+        result = _request_json("PUT", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al actualizar cuenta bancaria", payload=result)
+        return result
+
+    def cambiar_estado_cuenta_bancaria(self, id_cuenta: int, payload: dict) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/EmpresaCuentaBancaria/{int(id_cuenta)}/Estado")
+        result = _request_json("PATCH", url, token=self.token, body=payload, timeout_s=300.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al cambiar estado cuenta bancaria", payload=result)
+        return result
+
+    def eliminar_cuenta_bancaria(self, id_cuenta: int) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, f"/api/EmpresaCuentaBancaria/{int(id_cuenta)}")
+        result = _request_json("DELETE", url, token=self.token, timeout_s=120.0)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al eliminar cuenta bancaria", payload=result)
+        return result
+
+    def list_bancos(self, **query_params) -> dict:
+        if not self.token:
+            raise ValueError("Debe autenticarse primero (token vacío).")
+        url = _join_url(self.factura_base_url, "/api/ReferenciaBanco")
+        query = {k: v for k, v in query_params.items() if v is not None and v != ""}
+        if query:
+            url = f"{url}?{urllib.parse.urlencode(query, doseq=True)}"
+        result = _request_json("GET", url, token=self.token)
+        if not isinstance(result, dict):
+            raise SiifaApiError("Respuesta inesperada al consultar bancos", payload=result)
         return result
 
     def list_seguimiento_tipo_codigo_by_grupo(

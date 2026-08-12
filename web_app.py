@@ -1858,12 +1858,36 @@ CARGUE_HOME_HTML = """
   <main class="container">
   <div class="page-title">
     <h1>Cargue masivo</h1>
-    <div class="meta">Carga de archivos para operaciones masivas.</div>
+    <div class="meta">Carga de archivos para operaciones masivas. Docs: colección Postman v1.0.6 (Julio 2026).</div>
   </div>
   <div class="cards">
     <div class="card">
+      <h3>Radicar facturas (Masivo)</h3>
+      <p>POST /api/FacturaRadicado/MasivoPorId — campos extendidos con nitEmisor, nitAdquiriente, numeroFactura.</p>
+      <div class="actions">
+        <a href="/cargue/radicado">Abrir</a>
+        <a href="/cargue/radicado/plantilla.xlsx">Plantilla</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Pagos</h3>
+      <p>POST /api/SeguimientoFacturaPago/Masivo — v106: idCuentaOrigen/Destino, codigoFuente/SubFuente, idContratoAnticipo, referenciaBancaria.</p>
+      <div class="actions">
+        <a href="/cargue/pagos">Abrir</a>
+        <a href="/cargue/pagos/plantilla.xlsx">Plantilla</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Devoluciones</h3>
+      <p>POST /api/SeguimientoFacturaDevolucion/Masivo. Incluye respuesta masiva y cálculo de totales (v106).</p>
+      <div class="actions">
+        <a href="/cargue/devoluciones">Abrir</a>
+        <a href="/cargue/devoluciones/plantilla.xlsx">Plantilla</a>
+      </div>
+    </div>
+    <div class="card">
       <h3>Glosas</h3>
-      <p>POST /api/SeguimientoFacturaGlosa/Masivo (si 403: modo asistido)</p>
+      <p>POST /api/SeguimientoFacturaGlosa/Masivo (si 403: modo asistido). DecisionFinal/Reiteracion disponibles.</p>
       <div class="actions">
         <a href="/cargue/glosas">Abrir</a>
         <a href="/cargue/glosas/plantilla.xlsx">Plantilla</a>
@@ -2755,6 +2779,538 @@ def cargue_glosas_plantilla():
         data,
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers=resp_headers,
+    )
+
+
+@app.route("/cargue/radicado/plantilla.xlsx", methods=["GET"])
+def cargue_radicado_plantilla():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    headers = [
+        "idFactura",
+        "radicado",
+        "fechaRadicado",
+        "numeroFactura",
+        "nitEmisor",
+        "nitAdquiriente",
+    ]
+    rows = [
+        {
+            "idFactura": None,
+            "radicado": "RAD-2026-000123",
+            "fechaRadicado": "2026-07-20T00:00:00Z",
+            "numeroFactura": "FEMF9787",
+            "nitEmisor": "900243869",
+            "nitAdquiriente": "890900195",
+        }
+    ]
+    data = _xlsx_bytes("RadicadoMasivo", headers, rows)
+    resp_headers = {"Content-Disposition": 'attachment; filename="siifa_plantilla_radicado_masivo.xlsx"'}
+    return Response(
+        data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=resp_headers,
+    )
+
+
+@app.route("/cargue/pagos/plantilla.xlsx", methods=["GET"])
+def cargue_pagos_plantilla():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    headers = [
+        "idFactura",
+        "idContratoAnticipo",
+        "codigoFuente",
+        "codigoSubFuente",
+        "valor",
+        "fechaPago",
+        "referenciaBancaria",
+        "idCuentaOrigen",
+        "idCuentaDestino",
+    ]
+    rows = [
+        {
+            "idFactura": 9779,
+            "idContratoAnticipo": None,
+            "codigoFuente": 1,
+            "codigoSubFuente": 1,
+            "valor": 8706.14,
+            "fechaPago": "2026-07-20T12:00:00Z",
+            "referenciaBancaria": "RECIBO-456-20260720",
+            "idCuentaOrigen": 9664,
+            "idCuentaDestino": 5151,
+        }
+    ]
+    data = _xlsx_bytes("PagosMasivo", headers, rows)
+    resp_headers = {"Content-Disposition": 'attachment; filename="siifa_plantilla_pagos_masivo.xlsx"'}
+    return Response(
+        data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=resp_headers,
+    )
+
+
+@app.route("/cargue/devoluciones/plantilla.xlsx", methods=["GET"])
+def cargue_devoluciones_plantilla():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    headers = [
+        "idFactura",
+        "numeroFactura",
+        "nitEmisor",
+        "idSeguimientoTipoCodigoDevolucion",
+        "fechaFormulacion",
+        "valorDevolucion",
+        "observacion",
+    ]
+    rows = [
+        {
+            "idFactura": None,
+            "numeroFactura": "FEMF9787",
+            "nitEmisor": "900243869",
+            "idSeguimientoTipoCodigoDevolucion": "CD2201",
+            "fechaFormulacion": "2026-07-20T00:00:00Z",
+            "valorDevolucion": 42000,
+            "observacion": "Pago duplicado - devolución solicitada",
+        }
+    ]
+    data = _xlsx_bytes("Devoluciones", headers, rows)
+    resp_headers = {"Content-Disposition": 'attachment; filename="siifa_plantilla_devoluciones.xlsx"'}
+    return Response(
+        data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=resp_headers,
+    )
+
+
+CARGUE_RADICADO_HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Cargue Radicado Masivo</title>
+  <style>{{ base_css|safe }}</style>
+</head>
+<body>
+{{ nav|safe }}
+<main class="container">
+  <div class="page-title">
+    <h1>Radicado masivo (v1.0.6)</h1>
+    <div class="meta">Usa MasivoPorId (POST /api/FacturaRadicado/MasivoPorId) — campos extendidos.
+      Endpoint legacy Masivo también disponible; se intenta MasivoPorId primero y, si falla 404/405, Masivo como fallback.
+    </div>
+  </div>
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}{% if details %}<pre>{{ details }}</pre>{% endif %}</div>{% endif %}
+  {% if success %}<div class="card"><strong>{{ success }}</strong></div>{% endif %}
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <label>Archivo (.xlsx/.json)
+        <input type="file" name="archivo" accept=".xlsx,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json" required />
+      </label>
+      <div class="actions">
+        <button type="submit">Procesar cargue</button>
+        <a href="/cargue/radicado/plantilla.xlsx">Descargar plantilla (Excel)</a>
+        {% if last_available %}
+          <a href="/cargue/radicado/descargar?fmt=xlsx">Descargar última respuesta (Excel)</a>
+          <a href="/cargue/radicado/descargar?fmt=json">Descargar última respuesta (JSON)</a>
+        {% endif %}
+      </div>
+      {% if result %}<div style="margin-top:12px;" class="meta">Resultado</div><pre>{{ result }}</pre>{% endif %}
+    </form>
+  </div>
+  {{ footer|safe }}
+</main>
+</body>
+</html>
+"""
+
+CARGUE_PAGOS_HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Cargue Pagos Masivo (v1.0.6)</title>
+  <style>{{ base_css|safe }}</style>
+</head>
+<body>
+{{ nav|safe }}
+<main class="container">
+  <div class="page-title">
+    <h1>Pagos masivos (v1.0.6)</h1>
+    <div class="meta">POST /api/SeguimientoFacturaPago/Masivo — novedad: idCuentaOrigen, idCuentaDestino, codigoFuente, codigoSubFuente, idContratoAnticipo, referenciaBancaria.</div>
+  </div>
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}{% if details %}<pre>{{ details }}</pre>{% endif %}</div>{% endif %}
+  {% if success %}<div class="card"><strong>{{ success }}</strong></div>{% endif %}
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <label>Archivo (.xlsx/.json)
+        <input type="file" name="archivo" accept=".xlsx,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json" required />
+      </label>
+      <div class="actions">
+        <button type="submit">Procesar cargue</button>
+        <a href="/cargue/pagos/plantilla.xlsx">Descargar plantilla (Excel)</a>
+        {% if last_available %}
+          <a href="/cargue/pagos/descargar?fmt=xlsx">Descargar última respuesta (Excel)</a>
+          <a href="/cargue/pagos/descargar?fmt=json">Descargar última respuesta (JSON)</a>
+        {% endif %}
+      </div>
+      {% if result %}<div style="margin-top:12px;" class="meta">Resultado</div><pre>{{ result }}</pre>{% endif %}
+    </form>
+  </div>
+  {{ footer|safe }}
+</main>
+</body>
+</html>
+"""
+
+CARGUE_DEVOLUCIONES_HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Cargue Devoluciones (v1.0.6)</title>
+  <style>{{ base_css|safe }}</style>
+</head>
+<body>
+{{ nav|safe }}
+<main class="container">
+  <div class="page-title">
+    <h1>Devoluciones masivas (v1.0.6)</h1>
+    <div class="meta">POST /api/SeguimientoFacturaDevolucion/Masivo — novedad: respuesta masiva Respuesta/Masivo y Calculo/ByIdFactura.</div>
+  </div>
+  {% if error %}<div class="error"><strong>Error:</strong> {{ error }}{% if details %}<pre>{{ details }}</pre>{% endif %}</div>{% endif %}
+  {% if success %}<div class="card"><strong>{{ success }}</strong></div>{% endif %}
+  <div class="card">
+    <form method="post" enctype="multipart/form-data">
+      <label>Archivo (.xlsx/.json)
+        <input type="file" name="archivo" accept=".xlsx,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/json" required />
+      </label>
+      <div class="actions">
+        <button type="submit">Procesar cargue</button>
+        <a href="/cargue/devoluciones/plantilla.xlsx">Descargar plantilla (Excel)</a>
+        {% if last_available %}
+          <a href="/cargue/devoluciones/descargar?fmt=xlsx">Descargar última respuesta (Excel)</a>
+          <a href="/cargue/devoluciones/descargar?fmt=json">Descargar última respuesta (JSON)</a>
+        {% endif %}
+      </div>
+      {% if result %}<div style="margin-top:12px;" class="meta">Resultado</div><pre>{{ result }}</pre>{% endif %}
+    </form>
+  </div>
+  {{ footer|safe }}
+</main>
+</body>
+</html>
+"""
+
+
+def _last_store_key(section: str) -> str:
+    return f"_last_{section}_result"
+
+
+def _parse_upload_to_rows(file_storage, allowed_sheet_headers: list[str] | None = None) -> list[dict]:
+    filename = (file_storage.filename or "").lower()
+    bytes_data = file_storage.read()
+    if filename.endswith(".json"):
+        parsed = json.loads(bytes_data.decode("utf-8"))
+        if isinstance(parsed, list):
+            rows = [r for r in parsed if isinstance(r, dict)]
+        elif isinstance(parsed, dict):
+            for k in ("listaRadicado", "listaPagos", "listaDevoluciones", "listaGlosas", "items", "rows", "data"):
+                v = parsed.get(k)
+                if isinstance(v, list):
+                    rows = [r for r in v if isinstance(r, dict)]
+                    break
+            else:
+                rows = [parsed]
+        else:
+            raise ValueError("JSON inválido")
+        return rows
+    if filename.endswith(".xlsx"):
+        from io import BytesIO
+        wb = openpyxl.load_workbook(BytesIO(bytes_data), data_only=True)
+        ws = wb.active
+        header = None
+        rows = []
+        for row in ws.iter_rows(values_only=True):
+            if header is None:
+                header = [str(c).strip() if c is not None else "" for c in row]
+                continue
+            if not header:
+                continue
+            obj = {}
+            for i, cell in enumerate(row):
+                if i >= len(header) or not header[i]:
+                    continue
+                obj[header[i]] = cell
+            if any(v not in (None, "") for v in obj.values()):
+                rows.append(obj)
+        return rows
+    raise ValueError("Formato no soportado. Use .xlsx o .json")
+
+
+def _save_last(section: str, response: list[dict] | dict):
+    _SESSION_CACHE[_last_store_key(section)] = response
+
+
+def _download_last_response_if_present(section: str, default_keys: list[str]):
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    stored = _SESSION_CACHE.get(_last_store_key(section))
+    fmt = (request.args.get("fmt") or "xlsx").lower()
+    if stored is None:
+        return Response(
+            "No hay respuesta anterior. Primero haga un cargue exitoso.",
+            status=404,
+            mimetype="text/plain; charset=utf-8",
+        )
+    rows = stored if isinstance(stored, list) else [stored]
+    if fmt == "json":
+        return Response(
+            json.dumps(stored, ensure_ascii=False, indent=2),
+            mimetype="application/json",
+            headers={"Content-Disposition": f'attachment; filename="siifa_{section}_ultimo_resultado.json"'},
+        )
+    data = _xlsx_bytes(f"{section[:30]}_result", default_keys, rows)
+    headers = {"Content-Disposition": f'attachment; filename="siifa_{section}_ultimo_resultado.xlsx"'}
+    return Response(
+        data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
+
+
+_SESSION_CACHE: dict[str, object] = {}
+
+
+@app.route("/cargue/radicado", methods=["GET", "POST"])
+def cargue_radicado():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    error = None
+    details = None
+    success = None
+    result = None
+    last_available = _last_store_key("radicado") in _SESSION_CACHE
+    if request.method == "POST":
+        try:
+            file = request.files.get("archivo")
+            if not file:
+                raise ValueError("Debe adjuntar archivo")
+            rows = _parse_upload_to_rows(file)
+            if not rows:
+                raise ValueError("Archivo sin filas válidas")
+            clean_rows = []
+            for r in rows:
+                nr = {}
+                for k, v in r.items():
+                    if v is None or v == "":
+                        continue
+                    ks = str(k).strip()
+                    if ks.lower() == "idfactura":
+                        nr["idFactura"] = _coerce_int(v)
+                    elif ks.lower() == "fecharadicado":
+                        nr["fechaRadicado"] = str(v)
+                    elif ks.lower() == "radicado":
+                        nr["radicado"] = str(v)
+                    elif ks.lower() == "numerofactura":
+                        nr["numeroFactura"] = str(v)
+                    elif ks.lower() == "nitemisor":
+                        nr["nitEmisor"] = str(v)
+                    elif ks.lower() == "nitadquiriente":
+                        nr["nitAdquiriente"] = str(v)
+                    else:
+                        nr[ks] = v
+                clean_rows.append(nr)
+            client = _make_client_with_token(token)
+            response = None
+            try:
+                response = client.radicar_masivo_por_id(clean_rows)
+            except SiifaApiError as e:
+                if isinstance(e.status, int) and e.status in (404, 405):
+                    response = client.radicar_masivo(clean_rows)
+                else:
+                    raise
+            _save_last("radicado", response)
+            success = f"Radicados procesados: {len(response)}"
+            result = json.dumps(response, ensure_ascii=False, indent=2)
+        except SiifaApiError as e:
+            error = str(e)
+            details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
+        except Exception as e:
+            error = str(e)
+    from jinja2 import Template
+    body = Template(CARGUE_RADICADO_HTML).render(
+        nav=_render_nav("cargue"), base_css=BASE_CSS, footer=_render_footer(),
+        error=error, details=details, success=success, result=result, last_available=last_available,
+    )
+    return Response(body, mimetype="text/html; charset=utf-8")
+
+
+@app.route("/cargue/radicado/descargar", methods=["GET"])
+def cargue_radicado_descargar():
+    return _download_last_response_if_present("radicado", ["idFactura", "radicado", "fechaRadicado", "numeroFactura", "nitEmisor", "nitAdquiriente"])
+
+
+@app.route("/cargue/pagos", methods=["GET", "POST"])
+def cargue_pagos():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    error = None
+    details = None
+    success = None
+    result = None
+    last_available = _last_store_key("pagos") in _SESSION_CACHE
+    if request.method == "POST":
+        try:
+            file = request.files.get("archivo")
+            if not file:
+                raise ValueError("Debe adjuntar archivo")
+            rows = _parse_upload_to_rows(file)
+            if not rows:
+                raise ValueError("Archivo sin filas válidas")
+            clean_rows = []
+            for r in rows:
+                nr = {}
+                for k, v in r.items():
+                    if v is None or v == "":
+                        continue
+                    ks = str(k).strip()
+                    kl = ks.lower()
+                    if kl == "idfactura":
+                        nr["idFactura"] = _coerce_int(v)
+                    elif kl == "idcontratoanticipo":
+                        nr["idContratoAnticipo"] = _coerce_int(v)
+                    elif kl == "codigofuente":
+                        nr["codigoFuente"] = _coerce_int(v)
+                    elif kl == "codigosubfuente":
+                        nr["codigoSubFuente"] = _coerce_int(v)
+                    elif kl == "valor":
+                        nr["valor"] = _coerce_float(v)
+                    elif kl == "fechapago":
+                        nr["fechaPago"] = str(v)
+                    elif kl == "referenciabancaria":
+                        nr["referenciaBancaria"] = str(v)
+                    elif kl == "idcuentaorigen":
+                        nr["idCuentaOrigen"] = _coerce_int(v)
+                    elif kl == "idcuentadestino":
+                        nr["idCuentaDestino"] = _coerce_int(v)
+                    else:
+                        nr[ks] = v
+                clean_rows.append(nr)
+            client = _make_client_with_token(token)
+            response = client.crear_pagos_masivo(clean_rows)
+            _save_last("pagos", response)
+            success = f"Pagos procesados: {len(response)}"
+            result = json.dumps(response, ensure_ascii=False, indent=2)
+        except SiifaApiError as e:
+            error = str(e)
+            details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
+        except Exception as e:
+            error = str(e)
+    from jinja2 import Template
+    body = Template(CARGUE_PAGOS_HTML).render(
+        nav=_render_nav("cargue"), base_css=BASE_CSS, footer=_render_footer(),
+        error=error, details=details, success=success, result=result, last_available=last_available,
+    )
+    return Response(body, mimetype="text/html; charset=utf-8")
+
+
+@app.route("/cargue/pagos/descargar", methods=["GET"])
+def cargue_pagos_descargar():
+    return _download_last_response_if_present(
+        "pagos",
+        [
+            "idFactura",
+            "idContratoAnticipo",
+            "codigoFuente",
+            "codigoSubFuente",
+            "valor",
+            "fechaPago",
+            "referenciaBancaria",
+            "idCuentaOrigen",
+            "idCuentaDestino",
+        ],
+    )
+
+
+@app.route("/cargue/devoluciones", methods=["GET", "POST"])
+def cargue_devoluciones():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    error = None
+    details = None
+    success = None
+    result = None
+    last_available = _last_store_key("devoluciones") in _SESSION_CACHE
+    if request.method == "POST":
+        try:
+            file = request.files.get("archivo")
+            if not file:
+                raise ValueError("Debe adjuntar archivo")
+            rows = _parse_upload_to_rows(file)
+            if not rows:
+                raise ValueError("Archivo sin filas válidas")
+            client = _make_client_with_token(token)
+            clean_rows = []
+            for r in rows:
+                nr = {}
+                for k, v in r.items():
+                    if v is None or v == "":
+                        continue
+                    ks = str(k).strip()
+                    kl = ks.lower()
+                    if kl == "idfactura":
+                        nr["idFactura"] = _coerce_int(v)
+                    elif kl == "idseguimientotipocodigodevolucion":
+                        nr["idSeguimientoTipoCodigoDevolucion"] = str(v)
+                    elif kl == "fechaformulacion":
+                        nr["fechaFormulacion"] = str(v)
+                    elif kl == "valordevolucion":
+                        nr["valorDevolucion"] = _coerce_float(v)
+                    elif kl == "observacion":
+                        nr["observacion"] = str(v)
+                    else:
+                        if not nr.get("idFactura"):
+                            resolved, _ = _resolve_id_factura(client, r)
+                            if resolved:
+                                nr["idFactura"] = resolved
+                        nr[ks] = v
+                clean_rows.append(nr)
+            response = client.crear_devoluciones_masivo(clean_rows)
+            _save_last("devoluciones", response)
+            success = f"Devoluciones procesadas: {len(response)}"
+            result = json.dumps(response, ensure_ascii=False, indent=2)
+        except SiifaApiError as e:
+            error = str(e)
+            details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
+        except Exception as e:
+            error = str(e)
+    from jinja2 import Template
+    body = Template(CARGUE_DEVOLUCIONES_HTML).render(
+        nav=_render_nav("cargue"), base_css=BASE_CSS, footer=_render_footer(),
+        error=error, details=details, success=success, result=result, last_available=last_available,
+    )
+    return Response(body, mimetype="text/html; charset=utf-8")
+
+
+@app.route("/cargue/devoluciones/descargar", methods=["GET"])
+def cargue_devoluciones_descargar():
+    return _download_last_response_if_present(
+        "devoluciones",
+        [
+            "idFactura",
+            "idSeguimientoTipoCodigoDevolucion",
+            "fechaFormulacion",
+            "valorDevolucion",
+            "observacion",
+        ],
     )
 
 

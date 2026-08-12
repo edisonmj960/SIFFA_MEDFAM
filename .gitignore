@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyo
 *$py.class
 *.so
 .Python
@@ -20,6 +21,12 @@ wheels/
 .installed.cfg
 *.egg
 
+# Archivos de análisis/scripts temporales del proyecto
+_analizar*.py
+_analisis*.json
+_script*.py
+_tmp*.*
+!
 # Entornos virtuales
 venv/
 env/
