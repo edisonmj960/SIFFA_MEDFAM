@@ -1887,10 +1887,18 @@ CARGUE_HOME_HTML = """
     </div>
     <div class="card">
       <h3>Glosas</h3>
-      <p>POST /api/SeguimientoFacturaGlosa/Masivo (si 403: modo asistido). DecisionFinal/Reiteracion disponibles.</p>
+      <p>POST /api/SeguimientoFacturaGlosa/Masivo (si 403: modo asistido).</p>
       <div class="actions">
         <a href="/cargue/glosas">Abrir</a>
         <a href="/cargue/glosas/plantilla.xlsx">Plantilla</a>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Decisión Final Glosa</h3>
+      <p>PUT /api/SeguimientoFacturaGlosa/DecisionFinal — una por una (no hay masivo).</p>
+      <div class="actions">
+        <a href="/cargue/decision-final-glosa">Abrir</a>
+        <a href="/cargue/decision-final-glosa/plantilla.xlsx">Plantilla</a>
       </div>
     </div>
   </div>
@@ -3010,6 +3018,63 @@ def _last_store_key(section: str) -> str:
     return f"_last_{section}_result"
 
 
+def _coerce_iso_datetime(value) -> str | None:
+    import datetime as _dt
+    if value is None:
+        return None
+    if isinstance(value, (_dt.datetime, _dt.date)):
+        if isinstance(value, _dt.date) and not isinstance(value, _dt.datetime):
+            d = _dt.datetime.combine(value, _dt.time(0, 0))
+        else:
+            d = value
+        if d.tzinfo is None:
+            return d.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+        return d.astimezone(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+    s = str(value).strip()
+    if not s:
+        return None
+    s_clean = s.replace("Z", "+00:00").replace("z", "+00:00")
+    fmts = [
+        "%Y-%m-%dT%H:%M:%S%z",
+        "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+        "%d/%m/%Y %H:%M:%S",
+        "%d/%m/%Y %H:%M",
+        "%d/%m/%Y",
+        "%Y/%m/%d",
+    ]
+    for fmt in fmts:
+        try:
+            dt = _dt.datetime.strptime(s_clean, fmt)
+            if dt.tzinfo is None:
+                return dt.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+            return dt.astimezone(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+        except Exception:
+            continue
+    try:
+        num = float(s)
+    except Exception:
+        num = None
+    if num is not None:
+        try:
+            base = _dt.datetime(1899, 12, 30)
+            dt = base + _dt.timedelta(days=num)
+            return dt.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+        except Exception:
+            pass
+    try:
+        dt = _dt.datetime.fromisoformat(s_clean)
+        if dt.tzinfo is None:
+            return dt.strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+        return dt.astimezone(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S") + "Z"
+    except Exception:
+        return s
+
+
 def _parse_upload_to_rows(file_storage, allowed_sheet_headers: list[str] | None = None) -> list[dict]:
     filename = (file_storage.filename or "").lower()
     bytes_data = file_storage.read()
@@ -3310,6 +3375,207 @@ def cargue_devoluciones_descargar():
             "fechaFormulacion",
             "valorDevolucion",
             "observacion",
+        ],
+    )
+
+
+CARGUE_DECISION_FINAL_GLOSA_HTML = """
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cargue: Decisión Final Glosa</title>
+  <style>{{ base_css|safe }}</style>
+</head>
+<body>
+  {{ nav|safe }}
+  <main class="container">
+  <div class="page-title">
+    <h1>Decisión Final Glosa</h1>
+    <div class="meta">
+      PUT /api/SeguimientoFacturaGlosa/DecisionFinal (una por una, no hay Masivo).
+      <a href="/cargue/decision-final-glosa/plantilla.xlsx">Descargar plantilla Excel</a>
+    </div>
+  </div>
+  {% if error %}
+    <div class="error"><b>Error:</b> {{ error }}</div>
+  {% endif %}
+  {% if success %}
+    <div class="success"><b>OK:</b> {{ success }}</div>
+  {% endif %}
+  {% if last_available %}
+    <div class="panel">
+      <b>Última respuesta guardada:</b>
+      <a href="/cargue/decision-final-glosa/descargar?fmt=xlsx">Descargar última respuesta (Excel)</a>
+      <a href="/cargue/decision-final-glosa/descargar?fmt=json">Descargar última respuesta (JSON)</a>
+    </div>
+  {% endif %}
+  <form enctype="multipart/form-data" method="post" class="panel">
+    <label><b>1) Archivo (.xlsx / .json)</b></label>
+    <input type="file" name="file" required accept=".xlsx,.xlsm,.json">
+    <small>
+      Columnas Excel: <code>idSeguimientoFacturaGlosa, idSeguimientoTipoCodigoGlosaDecisionFinal,
+      fechaFormulacionDecisionFinal (YYYY-MM-DD o ISO), observacionDecisionFinal</code>.
+      JSON: una lista con esos keys (o diccionario con items/rows/data).
+    </small>
+    <button type="submit">Registrar decisión(es) final(es) a SIIFA</button>
+  </form>
+  {% if result %}
+    <div class="panel">
+      <b>Respuesta / Resumen:</b>
+      <pre>{{ result }}</pre>
+    </div>
+  {% endif %}
+  {% if details %}
+    <details open class="panel">
+      <summary>Detalles por fila</summary>
+      <pre>{{ details }}</pre>
+    </details>
+  {% endif %}
+  {{ footer|safe }}
+  </main>
+</body>
+</html>
+"""
+
+
+@app.route("/cargue/decision-final-glosa/plantilla.xlsx")
+def cargue_decision_final_glosa_plantilla():
+    headers = [
+        "idSeguimientoFacturaGlosa",
+        "idSeguimientoTipoCodigoGlosaDecisionFinal",
+        "fechaFormulacionDecisionFinal",
+        "observacionDecisionFinal",
+    ]
+    from datetime import datetime as _dt
+    rows = [
+        [
+            5055,
+            "ACEPTADA",
+            _dt(2026, 8, 1, 9, 0).strftime("%Y-%m-%dT%H:%M:%S"),
+            "Glosa aceptada, no procede recurso.",
+        ],
+    ]
+    data = _xlsx_bytes("DecisionFinalGlosa", headers, rows)
+    resp_headers = {"Content-Disposition": 'attachment; filename="siifa_plantilla_decision_final_glosa.xlsx"'}
+    return Response(
+        data,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=resp_headers,
+    )
+
+
+def _coerce_decision_final_item(d: dict) -> dict:
+    item = dict(d or {})
+    for k_int in ("idSeguimientoFacturaGlosa",):
+        if k_int in item and item[k_int] is not None and str(item[k_int]).strip() != "":
+            try:
+                item[k_int] = int(float(str(item[k_int]).strip()))
+            except Exception:
+                pass
+    for k_str in ("idSeguimientoTipoCodigoGlosaDecisionFinal", "observacionDecisionFinal"):
+        if k_str in item and item[k_str] is not None:
+            item[k_str] = str(item[k_str]).strip() or None
+    k_fecha = "fechaFormulacionDecisionFinal"
+    if k_fecha in item and item[k_fecha]:
+        item[k_fecha] = _coerce_iso_datetime(item[k_fecha])
+    return {k: v for k, v in item.items() if v is not None}
+
+
+@app.route("/cargue/decision-final-glosa", methods=["GET", "POST"])
+def cargue_decision_final_glosa():
+    token = _require_token()
+    if not token:
+        return redirect("/login")
+    from jinja2 import Template
+
+    error = None
+    details = None
+    success = None
+    result = None
+    last_available = bool(_SESSION_CACHE.get("decision_final_glosa"))
+
+    if request.method == "POST":
+        try:
+            file = request.files.get("file")
+            if not file:
+                raise ValueError("Falta el archivo.")
+            filename = (file.filename or "").strip().lower()
+            rows = _parse_upload_to_rows(
+                file,
+                allowed_sheet_headers=[
+                    "idSeguimientoFacturaGlosa",
+                    "idSeguimientoTipoCodigoGlosaDecisionFinal",
+                    "fechaFormulacionDecisionFinal",
+                    "observacionDecisionFinal",
+                ],
+            )
+            if not rows:
+                raise ValueError("No hay filas para procesar.")
+            client = _make_client_with_token(token)
+            results_list = []
+            errors_list = []
+            for idx, r in enumerate(rows, start=1):
+                payload = _coerce_decision_final_item(r)
+                required_fields = (
+                    "idSeguimientoFacturaGlosa",
+                    "idSeguimientoTipoCodigoGlosaDecisionFinal",
+                    "fechaFormulacionDecisionFinal",
+                )
+                missing = [k for k in required_fields if k not in payload]
+                if missing:
+                    errors_list.append({"fila": idx, "error": "Faltan campos obligatorios: " + ", ".join(missing), "payload": payload})
+                    continue
+                try:
+                    resp = client.decision_final_glosa(payload)
+                    results_list.append({"fila": idx, "ok": True, "request": payload, "response": resp})
+                except Exception as ex:
+                    errors_list.append({"fila": idx, "ok": False, "request": payload, "error": str(type(ex).__name__) + ": " + str(ex)})
+            combined = {
+                "total": len(rows),
+                "exitosos": len(results_list),
+                "fallidos": len(errors_list),
+                "resultados": results_list,
+                "errores": errors_list,
+            }
+            _save_last("decision_final_glosa", combined)
+            last_available = True
+            if errors_list and not results_list:
+                error = f"Todas fallaron ({len(errors_list)}/{len(rows)}). Ver detalles."
+            elif errors_list:
+                success = f"Procesados: {len(results_list)} OK, {len(errors_list)} con error."
+            else:
+                success = f"Se registraron exitosamente {len(results_list)} decisión(es) final(es)."
+            import json as _json
+            result = _json.dumps(
+                {k: v for k, v in combined.items() if k not in ("resultados", "errores")},
+                ensure_ascii=False,
+                indent=2,
+            )
+            details = _json.dumps(combined, ensure_ascii=False, indent=2, default=str)
+        except Exception as e:
+            error = str(type(e).__name__) + ": " + str(e)
+
+    body = Template(CARGUE_DECISION_FINAL_GLOSA_HTML).render(
+        nav=_render_nav("cargue"), base_css=BASE_CSS, footer=_render_footer(),
+        error=error, details=details, success=success, result=result, last_available=last_available,
+    )
+    return Response(body, mimetype="text/html; charset=utf-8")
+
+
+@app.route("/cargue/decision-final-glosa/descargar", methods=["GET"])
+def cargue_decision_final_glosa_descargar():
+    return _download_last_response_if_present(
+        "decision_final_glosa",
+        [
+            "fila",
+            "ok",
+            "idSeguimientoFacturaGlosa",
+            "idSeguimientoTipoCodigoGlosaDecisionFinal",
+            "fechaFormulacionDecisionFinal",
+            "observacionDecisionFinal",
+            "error",
         ],
     )
 
