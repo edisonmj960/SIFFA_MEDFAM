@@ -168,8 +168,19 @@ def _request_json(
     token: str | None = None,
     body: object | None = None,
     timeout_s: float | None = None,
+    fast_fail: bool = False,
 ) -> object:
-    session, default_timeouts = _get_session()
+    if fast_fail:
+        session, default_timeouts = _build_http_session(
+            total_retries=0,
+            backoff_factor=0.0,
+            timeout_connect=8,
+            timeout_read=15,
+        )
+        max_attempts = 1
+    else:
+        session, default_timeouts = _get_session()
+        max_attempts = 2
 
     headers = {}
     if token:
@@ -241,8 +252,7 @@ def _request_json(
         except requests.exceptions.SSLError as e:
             last_err = e
             hint = (
-                " (SSL/TLS falló. Si está en red corporativa, configure "
-                "SIIFA_SSL_VERIFY=0 o HTTPS_PROXY con el proxy corporativo)"
+                " (SSL/TLS falló. Ver sugerencias abajo para configurar SIIFA_SSL_VERIFY o HTTPS_PROXY.)"
             )
             if attempts >= max_attempts:
                 raise SiifaApiError(
@@ -262,12 +272,8 @@ def _request_json(
         except requests.exceptions.ConnectionError as e:
             last_err = e
             hint = (
-                " (no se pudo conectar al servidor SIIFA. "
-                "Posibles causas: 1) La IP del servidor no está en whitelist de SISPRO, "
-                "2) Bloqueo de red/firewall, 3) Requiere VPN o IP colombiana, "
-                "4) El servicio SIIFA está temporalmente caído. "
-                "Solución: configure HTTPS_PROXY hacia un proxy con IP colombiana "
-                "o despliegue en servidor con IP whitelisteada.)"
+                " (no se pudo conectar. Ver sugerencias abajo: whitelist SISPRO, "
+                "IP colombiana / HTTPS_PROXY, firewall o despliegue alternativo.)"
             )
             if attempts >= max_attempts:
                 raise SiifaApiError(
@@ -311,7 +317,7 @@ class SiifaClient:
 
     def login(self, user_name: str, password: str) -> str:
         url = _join_url(self.seguridad_base_url, "/api/Auth/login")
-        result = _request_json("POST", url, body={"userName": user_name, "password": password})
+        result = _request_json("POST", url, body={"userName": user_name, "password": password}, fast_fail=True)
         if not isinstance(result, dict):
             raise SiifaApiError("Respuesta inesperada en login", payload=result)
         if not result.get("success") or not result.get("token"):
