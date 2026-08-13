@@ -792,11 +792,21 @@ def login():
                 resp.delete_cookie("siifa_session")
                 return resp
             error = str(e)
-            details = json.dumps(e.payload, ensure_ascii=False, indent=2) if e.payload is not None else None
-            hints = _extraer_troubleshooting_hints(error)
+            details_payload = e.payload
+            details = (
+                json.dumps(details_payload, ensure_ascii=False, indent=2)
+                if details_payload is not None
+                else None
+            )
+            cause = getattr(e, "cause_type", None) or None
+            raw_cause = getattr(e, "raw_cause_message", None) or None
+            combined_for_hints = " | ".join(
+                [x for x in (str(e.status or ""), cause or "", raw_cause or "" or str(e)) if x]
+            )
+            hints = _extraer_troubleshooting_hints(combined_for_hints)
         except Exception as e:
             error = str(e)
-            hints = _extraer_troubleshooting_hints(error)
+            hints = _extraer_troubleshooting_hints(str(type(e).__name__) + ": " + str(e))
 
     from jinja2 import Template
     tmpl = Template(LOGIN_HTML)
@@ -3624,12 +3634,19 @@ def _extraer_troubleshooting_hints(error_msg: str) -> list[str]:
             "   Solución correcta: importe el certificado raíz corporativo en el almacén de CA del sistema.",
         ])
 
-    if any(k in ml for k in ("proxy error", "proxyconnectionerror", "no such host", "cannot connect to proxy", "error de proxy")) or (
-        "proxy" in ml and any(w in ml for w in ("revis", "configur", "mal", "fall", "error"))
-    ):
+    if any(k in ml for k in (
+        "proxy error",
+        "proxyconnectionerror",
+        "cannot connect to proxy",
+        "error de proxy",
+        "no se pudo conectar al proxy",
+        "proxy respondió con error",
+        "proxy auth",
+        "proxyauthenticationrequired",
+    )):
         hints.extend([
             "→ Error de proxy. Revise <code>HTTP_PROXY</code> / <code>HTTPS_PROXY</code>.",
-            "   Si SIIFA debe salir directo, defina <code>NO_PROXY=.sispro.gov.co</code>.",
+            "   Si SIIFA debe salir directo (sin proxy), defina <code>NO_PROXY=.sispro.gov.co</code>.",
         ])
 
     if any(k in ml for k in ("401", "unauthorized", "login falló", "usuario no autorizado", "credencial")):

@@ -18,10 +18,28 @@ except Exception as _import_err:
 
 
 class SiifaApiError(RuntimeError):
-    def __init__(self, message, status=None, payload=None):
+    def __init__(self, message, status=None, payload=None, cause_type=None, raw_cause_message=None):
         super().__init__(message)
         self.status = status
         self.payload = payload
+        self.cause_type = cause_type
+        self.raw_cause_message = raw_cause_message
+
+    def diagnostic_parts(self) -> tuple[str | None, str | None, str | None, str]:
+        cause = str(self.cause_type) if self.cause_type else None
+        raw = str(self.raw_cause_message) if self.raw_cause_message else None
+        payload_dbg = None
+        if self.payload is not None:
+            try:
+                import json as _json
+                payload_dbg = _json.dumps(self.payload, ensure_ascii=False)
+            except Exception:
+                payload_dbg = str(self.payload)
+        status_dbg = str(self.status) if self.status is not None else None
+        combined = " | ".join(
+            [x for x in (status_dbg, cause or "", raw or "", payload_dbg or "", str(self)) if x]
+        ).strip(" |")
+        return cause, raw, payload_dbg, combined
 
 
 def _join_url(base_url: str, path: str) -> str:
@@ -227,13 +245,19 @@ def _request_json(
                 "SIIFA_SSL_VERIFY=0 o HTTPS_PROXY con el proxy corporativo)"
             )
             if attempts >= max_attempts:
-                raise SiifaApiError(f"Error SSL/TLS al llamar {url}: {e}{hint}") from e
+                raise SiifaApiError(
+                    f"Error SSL/TLS al llamar {url}: {e}{hint}",
+                    cause_type="SSLError",
+                    raw_cause_message=str(e),
+                ) from e
             time.sleep(1.0)
         except requests.exceptions.ProxyError as e:
             last_err = e
             raise SiifaApiError(
                 f"Error de proxy al llamar {url}: {e}. "
-                "Revise HTTP_PROXY/HTTPS_PROXY o configure NO_PROXY para el dominio."
+                "Revise HTTP_PROXY/HTTPS_PROXY o configure NO_PROXY para el dominio.",
+                cause_type="ProxyError",
+                raw_cause_message=str(e),
             ) from e
         except requests.exceptions.ConnectionError as e:
             last_err = e
@@ -246,22 +270,36 @@ def _request_json(
                 "o despliegue en servidor con IP whitelisteada.)"
             )
             if attempts >= max_attempts:
-                raise SiifaApiError(f"Error de red al llamar {url}: {e}{hint}") from e
+                raise SiifaApiError(
+                    f"Error de red al llamar {url}: {e}{hint}",
+                    cause_type="ConnectionError",
+                    raw_cause_message=str(e),
+                ) from e
             time.sleep(1.5)
         except requests.exceptions.Timeout as e:
             last_err = e
             if attempts >= max_attempts:
                 raise SiifaApiError(
                     f"Timeout al llamar {url}: {e}. "
-                    "El servicio SIIFA respondió lento o está saturado."
+                    "El servicio SIIFA respondió lento o está saturado.",
+                    cause_type="Timeout",
+                    raw_cause_message=str(e),
                 ) from e
             time.sleep(2.0)
         except Exception as e:
             last_err = e
-            raise SiifaApiError(f"Error al llamar {url}: {e}") from e
+            raise SiifaApiError(
+                f"Error al llamar {url}: {e}",
+                cause_type=type(e).__name__,
+                raw_cause_message=str(e),
+            ) from e
 
     if last_err is not None:
-        raise SiifaApiError(f"Error al llamar {url}: {last_err}")
+        raise SiifaApiError(
+            f"Error al llamar {url}: {last_err}",
+            cause_type=type(last_err).__name__,
+            raw_cause_message=str(last_err),
+        )
     raise SiifaApiError(f"Error desconocido al llamar {url}")
 
 
@@ -815,12 +853,17 @@ def _diagnostico_red(seguridad_base_url: str | None = None, factura_base_url: st
     seg_url = seguridad_base_url or os.environ.get("SIIFA_SECURITY_BASEURL", "https://siifa.sispro.gov.co/siifa-seguridad")
     fac_url = factura_base_url or os.environ.get("SIIFA_FACTURA_BASEURL", "https://siifa.sispro.gov.co/siifa-factura")
     results: dict = {}
-    session, timeouts = _get_session()
+    diag_session, diag_timeouts = _build_http_session(
+        total_retries=0,
+        backoff_factor=0.0,
+        timeout_connect=8,
+        timeout_read=12,
+    )
     for name, base in [("seguridad", seg_url), ("factura", fac_url)]:
         url = _join_url(base, "/api/Auth/login") if name == "seguridad" else _join_url(base, "/api/Factura")
         try:
             t0 = time.time()
-            resp = session.head(url, timeout=(15, 20), allow_redirects=True)
+            resp = diag_session.head(url, timeout=diag_timeouts, allow_redirects=True)
             dt = round((time.time() - t0) * 1000, 1)
             results[name] = {
                 "ok": True,
