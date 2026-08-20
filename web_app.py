@@ -326,7 +326,7 @@ def _as_list_result(value) -> list:
     return []
 
 
-def _xlsx_bytes(sheet_name: str, headers: list[str], rows: list[dict]) -> bytes:
+def _xlsx_bytes(sheet_name: str, headers: list[str], rows: list) -> bytes:
     if Workbook is None:
         raise ValueError("No está disponible la exportación a Excel (.xlsx) en este entorno.")
     wb = Workbook()
@@ -334,13 +334,21 @@ def _xlsx_bytes(sheet_name: str, headers: list[str], rows: list[dict]) -> bytes:
     ws.title = (sheet_name or "Hoja1")[:31]
     ws.append(list(headers))
     for r in rows:
-        ws.append([r.get(h) for h in headers])
+        if isinstance(r, dict):
+            ws.append([r.get(h) for h in headers])
+        elif isinstance(r, (list, tuple)):
+            row_out = []
+            for i in range(len(headers)):
+                row_out.append(r[i] if i < len(r) else None)
+            ws.append(row_out)
+        else:
+            ws.append([None] * len(headers))
     fp = io.BytesIO()
     wb.save(fp)
     return fp.getvalue()
 
 
-def _xlsx_bytes_multi(sheets: list[tuple[str, list[str], list[dict]]]) -> bytes:
+def _xlsx_bytes_multi(sheets: list[tuple[str, list[str], list]]) -> bytes:
     if Workbook is None:
         raise ValueError("No está disponible la exportación a Excel (.xlsx) en este entorno.")
     wb = Workbook()
@@ -354,7 +362,15 @@ def _xlsx_bytes_multi(sheets: list[tuple[str, list[str], list[dict]]]) -> bytes:
         ws.title = (sheet_name or "Hoja")[:31]
         ws.append(list(headers))
         for r in rows:
-            ws.append([r.get(h) for h in headers])
+            if isinstance(r, dict):
+                ws.append([r.get(h) for h in headers])
+            elif isinstance(r, (list, tuple)):
+                row_out = []
+                for i in range(len(headers)):
+                    row_out.append(r[i] if i < len(r) else None)
+                ws.append(row_out)
+            else:
+                ws.append([None] * len(headers))
     fp = io.BytesIO()
     wb.save(fp)
     return fp.getvalue()
